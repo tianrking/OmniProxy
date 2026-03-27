@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use omni_proxy::cert::diagnose_ca;
+use omni_proxy::cert::{diagnose_ca, load_or_init_issuer};
 use omni_proxy::config::Cli;
 use omni_proxy::rules::RuleEngine;
 use tracing::info;
@@ -32,6 +32,42 @@ async fn main() -> Result<()> {
             s.res_header_rules,
             s.res_status_rules,
             s.res_body_rules
+        );
+        return Ok(());
+    }
+
+    if cli.bootstrap {
+        if let Some(parent) = app.ca_cert_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        if let Some(parent) = app.ca_key_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        if let Some(parent) = app.rule_file_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        if let Some(parent) = app.flow_log_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        tokio::fs::create_dir_all(&app.plugin_dir).await?;
+        let _ = load_or_init_issuer(&app.ca_cert_path, &app.ca_key_path).await?;
+        if !app.rule_file_path.exists() {
+            tokio::fs::write(
+                &app.rule_file_path,
+                "# OmniProxy rules\n# deny req.method == \"TRACE\"\n",
+            )
+            .await?;
+        }
+        if !app.flow_log_path.exists() {
+            tokio::fs::write(&app.flow_log_path, b"").await?;
+        }
+        println!(
+            "bootstrap_ok=true\nca_cert={}\nca_key={}\nplugin_dir={}\nrule_file={}\nflow_log={}",
+            app.ca_cert_path.display(),
+            app.ca_key_path.display(),
+            app.plugin_dir.display(),
+            app.rule_file_path.display(),
+            app.flow_log_path.display()
         );
         return Ok(());
     }

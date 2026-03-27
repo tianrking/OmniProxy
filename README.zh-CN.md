@@ -131,6 +131,12 @@ CA 证书诊断（不启动代理）：
 cargo run --bin omni_proxy -- --diagnose-ca
 ```
 
+一键本地初始化：
+
+```bash
+cargo run --bin omni_proxy -- --bootstrap
+```
+
 快速压测工具：
 
 ```bash

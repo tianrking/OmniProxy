@@ -104,6 +104,7 @@ Execution cadence:
   - Trust diagnostics and verification command
   - Cert cache visibility
   - status: `--diagnose-ca` 已接入（证书存在性/尺寸/可解析性检查）
+  - status+: `--bootstrap` 已接入（一键初始化 CA/插件目录/规则与流量文件）
 - Exit criteria:
   - Users can validate local trust chain with one command
 

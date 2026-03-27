@@ -120,6 +120,12 @@ cargo run --bin omni_proxy -- --check-rules --rule-file ./examples/rules-ci.txt
 cargo run --bin omni_proxy -- --diagnose-ca
 ```
 
+11. One-command local bootstrap:
+
+```bash
+cargo run --bin omni_proxy -- --bootstrap
+```
+
 Rule file example:
 
 ```txt
