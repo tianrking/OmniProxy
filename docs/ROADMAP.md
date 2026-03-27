@@ -58,6 +58,7 @@ Execution cadence:
   - Better request/response pairing for keep-alive and multiplexed traffic
   - Replay result diff view (status/header/body hash)
   - status: request/response body bounded capture (event/log base64) 已接入
+  - status+: replay 已支持 body 重放及捕获响应差异摘要（status/body-bytes）
 - Exit criteria:
   - `omni-replay` can replay captured body with deterministic request-id correlation
 

@@ -1,8 +1,10 @@
 use anyhow::{Context, Result, bail};
+use base64::Engine as _;
 use clap::Parser;
 use omni_proxy::api::ApiEvent;
 use reqwest::Method;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use std::collections::{HashMap, VecDeque};
 use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -34,6 +36,9 @@ struct Cli {
 
     #[arg(long, default_value_t = false)]
     print_curl: bool,
+
+    #[arg(long, default_value_t = false)]
+    no_body: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +50,14 @@ struct ReplayCandidate {
     method: String,
     uri: String,
     headers: Vec<(String, String)>,
+    body: Option<Vec<u8>>,
+    captured_response: Option<ResponseSnapshot>,
+}
+
+#[derive(Debug, Clone)]
+struct ResponseSnapshot {
+    status: u16,
+    body_size: Option<usize>,
 }
 
 #[tokio::main]
@@ -105,6 +118,11 @@ async fn main() -> Result<()> {
         .with_context(|| format!("invalid method: {}", method))?;
 
     let headers = build_headers(&candidate.headers, &cli.headers)?;
+    let body = if cli.no_body {
+        None
+    } else {
+        candidate.body.clone()
+    };
 
     if cli.print_curl || cli.dry_run {
         println!("{}", render_curl(&method.to_string(), &uri, &headers));
@@ -116,11 +134,11 @@ async fn main() -> Result<()> {
     }
 
     let client = reqwest::Client::builder().build()?;
-    let resp = client
-        .request(method.clone(), &uri)
-        .headers(headers)
-        .send()
-        .await?;
+    let mut req = client.request(method.clone(), &uri).headers(headers);
+    if let Some(body) = body.clone() {
+        req = req.body(body);
+    }
+    let resp = req.send().await?;
     let status = resp.status();
     let bytes = resp.bytes().await?;
 
@@ -130,8 +148,35 @@ async fn main() -> Result<()> {
         candidate.request_id.as_deref().unwrap_or("-")
     );
     println!("request: {} {}", method, uri);
+    println!(
+        "request body bytes: {}",
+        body.as_ref().map(|b| b.len()).unwrap_or(0)
+    );
     println!("response status: {}", status);
     println!("response bytes: {}", bytes.len());
+    if let Some(captured) = &candidate.captured_response {
+        println!(
+            "captured response status: {} (diff={})",
+            captured.status,
+            if captured.status as u16 == status.as_u16() {
+                "no"
+            } else {
+                "yes"
+            }
+        );
+        println!(
+            "captured response bytes: {} (diff={})",
+            captured
+                .body_size
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "-".into()),
+            match captured.body_size {
+                Some(n) if n == bytes.len() => "no",
+                Some(_) => "yes",
+                None => "unknown",
+            }
+        );
+    }
 
     Ok(())
 }
@@ -140,6 +185,8 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
     let file = File::open(path).with_context(|| format!("open flow log {}", path.display()))?;
     let reader = BufReader::new(file);
     let mut out = Vec::new();
+    let mut req_index_by_request_id: HashMap<String, usize> = HashMap::new();
+    let mut req_indexes_by_client: HashMap<String, VecDeque<usize>> = HashMap::new();
 
     for (i, line) in reader.lines().enumerate() {
         let line = line?;
@@ -151,25 +198,62 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
             Err(_) => continue,
         };
 
-        if let ApiEvent::HttpRequest {
-            timestamp_ms,
-            request_id,
-            client,
-            method,
-            uri,
-            headers,
-            ..
-        } = event
-        {
-            out.push(ReplayCandidate {
-                index: i,
+        match event {
+            ApiEvent::HttpRequest {
                 timestamp_ms,
                 request_id,
                 client,
                 method,
                 uri,
                 headers,
-            });
+                body_b64,
+                ..
+            } => {
+                let body = body_b64
+                    .as_deref()
+                    .and_then(|v| base64::engine::general_purpose::STANDARD.decode(v).ok());
+                out.push(ReplayCandidate {
+                    index: i,
+                    timestamp_ms,
+                    request_id: request_id.clone(),
+                    client: client.clone(),
+                    method,
+                    uri,
+                    headers,
+                    body,
+                    captured_response: None,
+                });
+                let idx = out.len() - 1;
+                if let Some(req_id) = request_id {
+                    req_index_by_request_id.insert(req_id, idx);
+                }
+                req_indexes_by_client
+                    .entry(client)
+                    .or_default()
+                    .push_back(idx);
+            }
+            ApiEvent::HttpResponse {
+                request_id,
+                client,
+                status,
+                body_size,
+                ..
+            } => {
+                let target = request_id
+                    .as_deref()
+                    .and_then(|id| req_index_by_request_id.get(id).copied())
+                    .or_else(|| {
+                        req_indexes_by_client
+                            .get_mut(&client)
+                            .and_then(|q| q.pop_front())
+                    });
+                if let Some(idx) = target {
+                    if let Some(req) = out.get_mut(idx) {
+                        req.captured_response = Some(ResponseSnapshot { status, body_size });
+                    }
+                }
+            }
+            ApiEvent::WebSocketFrame { .. } => {}
         }
     }
 

@@ -52,8 +52,8 @@ Status legend:
 1. Replay by index/request-id: `DONE`
 2. Method/url/header override: `DONE`
 3. Dry-run and cURL export: `DONE`
-4. Request body replay: `TODO`
-5. Replay diff report (status/header/body hash): `TODO`
+4. Request body replay: `IN_PROGRESS`
+5. Replay diff report (status/header/body hash): `IN_PROGRESS`
 6. Stateful session replay helpers: `TODO`
 
 ## D. Rule Engine and Traffic Mutation

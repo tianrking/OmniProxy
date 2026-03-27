@@ -86,6 +86,7 @@ cargo run --bin omni-replay -- --list
 cargo run --bin omni-replay -- --index 12
 cargo run --bin omni-replay -- --request-id 4d3a... --header "Authorization: Bearer xxx"
 cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
+cargo run --bin omni-replay -- --index 12 --no-body
 ```
 
 8. Validate rules before starting proxy:
