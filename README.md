@@ -6,7 +6,7 @@ Cross-platform target:
 
 - Linux (`amd64`, `arm64`, `arm32`)
 - Windows (`x64`)
-- macOS (local build support)
+- macOS (`x64`, `arm64`)
 
 CI includes multi-target build and `.deb` packaging.
 

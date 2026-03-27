@@ -237,15 +237,11 @@ fn parse_set_header(input: &str) -> Result<(String, String, &str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use uuid::Uuid;
 
     fn write_rule_file(content: &str) -> std::path::PathBuf {
         let mut p = std::env::temp_dir();
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("valid time")
-            .as_nanos();
-        p.push(format!("omni_rules_{ts}.txt"));
+        p.push(format!("omni_rules_{}.txt", Uuid::new_v4()));
         fs::write(&p, content).expect("write rule file");
         p
     }
