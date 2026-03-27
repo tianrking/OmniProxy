@@ -2,6 +2,7 @@ use super::HttpFilter;
 use crate::{
     api::{ApiEvent, ApiHub, now_ms},
     plugins::WasmPluginHost,
+    rules::RuleEngine,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -182,5 +183,35 @@ impl HttpFilter for WasmFilter {
             warn!(error = %err, "wasm response hook failed");
         }
         Ok(res)
+    }
+}
+
+#[derive(Clone)]
+pub struct RuleFilter {
+    rules: Arc<RuleEngine>,
+}
+
+impl RuleFilter {
+    pub fn new(rules: Arc<RuleEngine>) -> Self {
+        Self { rules }
+    }
+}
+
+#[async_trait]
+impl HttpFilter for RuleFilter {
+    async fn on_request(
+        &self,
+        _ctx: &HttpContext,
+        req: Request<Body>,
+    ) -> Result<RequestOrResponse> {
+        if self.rules.should_deny(req.method().as_str(), None) {
+            let denied = Response::builder()
+                .status(403)
+                .header("content-type", "text/plain; charset=utf-8")
+                .body(Body::from("blocked by OmniProxy rule-engine"))
+                .expect("build deny response");
+            return Ok(denied.into());
+        }
+        Ok(req.into())
     }
 }

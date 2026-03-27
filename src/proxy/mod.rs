@@ -4,9 +4,10 @@ use crate::{
     config::AppConfig,
     filter::{
         FilterChain,
-        standard::{AccessLogFilter, RequestIdFilter, WasmFilter},
+        standard::{AccessLogFilter, RequestIdFilter, RuleFilter, WasmFilter},
     },
     plugins::WasmPluginHost,
+    rules::RuleEngine,
     storage::run_flow_logger,
 };
 use anyhow::{Context, Result};
@@ -64,6 +65,11 @@ pub async fn run(config: AppConfig) -> Result<()> {
             .await
             .with_context(|| format!("create plugin dir {}", config.plugin_dir.display()))?;
     }
+    if let Some(parent) = config.rule_file_path.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .with_context(|| format!("create rules dir {}", parent.display()))?;
+    }
 
     let api_hub = ApiHub::new(4096);
 
@@ -95,8 +101,15 @@ pub async fn run(config: AppConfig) -> Result<()> {
         &config.plugin_dir,
         config.wasm_timeout_ms,
     )?);
+    let rules = Arc::new(RuleEngine::load(&config.rule_file_path)?);
+    info!(
+        rule_file = %config.rule_file_path.display(),
+        rule_count = rules.count(),
+        "rule engine ready"
+    );
     let chain = FilterChain::new(vec![
         Arc::new(RequestIdFilter),
+        Arc::new(RuleFilter::new(rules)),
         Arc::new(AccessLogFilter::with_hub(Some(api_hub))),
         Arc::new(WasmFilter::new(wasm_host)),
     ]);

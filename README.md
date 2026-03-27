@@ -10,6 +10,12 @@ Cross-platform target:
 
 CI includes multi-target build and `.deb` packaging.
 
+Rules engine:
+
+- default file: `~/.omni-proxy/rules.txt`
+- expression syntax follows built-in DSL (e.g. `req.method == "TRACE"`)
+- each non-empty non-comment line (`#`) is a deny rule
+
 Current phase (core-first, no UI):
 
 - Explicit HTTP proxy + HTTPS `CONNECT` interception via MITM
@@ -57,6 +63,14 @@ cargo run --bin omni-replay -- --list
 cargo run --bin omni-replay -- --index 12
 cargo run --bin omni-replay -- --request-id 4d3a... --header "Authorization: Bearer xxx"
 cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
+```
+
+Rule file example:
+
+```txt
+# Block dangerous methods
+req.method == "TRACE"
+req.method == "CONNECT"
 ```
 
 ## Plugin Directory

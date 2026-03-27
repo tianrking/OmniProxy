@@ -5,4 +5,5 @@ pub mod filter;
 pub mod plugins;
 pub mod proxy;
 pub mod query;
+pub mod rules;
 pub mod storage;
