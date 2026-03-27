@@ -25,6 +25,7 @@ pub async fn run_flow_logger(
     }
 
     let mut file = open_append(path).await?;
+    let mut current_size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
 
     info!(
         path = %path.display(),
@@ -39,13 +40,14 @@ pub async fn run_flow_logger(
                 let line = serde_json::to_string(&event)?;
                 file.write_all(line.as_bytes()).await?;
                 file.write_all(b"\n").await?;
-                file.flush().await?;
+                current_size = current_size.saturating_add(line.len() as u64 + 1);
 
                 if opts.rotate_bytes > 0 {
-                    let size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
-                    if size >= opts.rotate_bytes {
+                    if current_size >= opts.rotate_bytes {
+                        file.flush().await?;
                         rotate_logs(path, opts.max_files).await?;
                         file = open_append(path).await?;
+                        current_size = file.metadata().await.map(|m| m.len()).unwrap_or(0);
                     }
                 }
             }

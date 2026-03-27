@@ -67,6 +67,9 @@ cargo run --release -- --listen 127.0.0.1:9090
 websocat ws://127.0.0.1:9091
 ```
 
+Slow-consumer protection for backend WS API:
+- `--api-max-lag` / `OMNI_API_MAX_LAG` (default `8192`)
+
 WebSocket frame preview truncation can be tuned via:
 - `--ws-preview-bytes`
 - env: `OMNI_WS_PREVIEW_BYTES`

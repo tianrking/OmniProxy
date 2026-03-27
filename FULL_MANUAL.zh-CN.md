@@ -33,7 +33,8 @@ cargo run --release -- --listen 127.0.0.1:9090
 
 1. `--listen` / `OMNI_LISTEN`：代理监听地址。
 2. `--api-listen` / `OMNI_API_LISTEN`：后端事件 API 地址。
-3. `--log-level` / `OMNI_LOG`：日志级别。
+3. `--api-max-lag` / `OMNI_API_MAX_LAG`：慢消费客户端累计掉包超过阈值后自动断开。
+4. `--log-level` / `OMNI_LOG`：日志级别。
 
 ### 3.3 CA 与初始化
 

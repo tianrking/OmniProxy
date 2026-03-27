@@ -11,6 +11,9 @@ pub struct Cli {
     #[arg(long, env = "OMNI_API_LISTEN", default_value = "127.0.0.1:9091")]
     pub api_listen: String,
 
+    #[arg(long, env = "OMNI_API_MAX_LAG", default_value_t = 8192_u64)]
+    pub api_max_lag: u64,
+
     #[arg(long, env = "OMNI_CA_CERT", default_value = ".omni-proxy/ca.crt")]
     pub ca_cert: PathBuf,
 
@@ -78,6 +81,7 @@ pub struct Cli {
 pub struct AppConfig {
     pub listen_addr: SocketAddr,
     pub api_listen_addr: SocketAddr,
+    pub api_max_lag: u64,
     pub ca_cert_path: PathBuf,
     pub ca_key_path: PathBuf,
     pub plugin_dir: PathBuf,
@@ -108,6 +112,7 @@ impl AppConfig {
         Ok(Self {
             listen_addr,
             api_listen_addr,
+            api_max_lag: cli.api_max_lag.max(1),
             ca_cert_path: expand_home(cli.ca_cert),
             ca_key_path: expand_home(cli.ca_key),
             plugin_dir: expand_home(cli.plugin_dir),

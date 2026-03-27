@@ -71,6 +71,9 @@ cargo run --release -- --listen 127.0.0.1:9090
 websocat ws://127.0.0.1:9091
 ```
 
+后端 WS API 慢消费者保护：
+- `--api-max-lag` / `OMNI_API_MAX_LAG`（默认 `8192`）
+
 5. 启动 TUI：
 
 ```bash

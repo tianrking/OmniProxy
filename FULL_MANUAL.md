@@ -33,7 +33,8 @@ cargo run --release -- --listen 127.0.0.1:9090
 
 1. `--listen` / `OMNI_LISTEN`: proxy listen address.
 2. `--api-listen` / `OMNI_API_LISTEN`: backend WS API address.
-3. `--log-level` / `OMNI_LOG`: log level.
+3. `--api-max-lag` / `OMNI_API_MAX_LAG`: close lagging API clients after accumulated dropped events exceed the threshold.
+4. `--log-level` / `OMNI_LOG`: log level.
 
 ### 3.3 CA and Bootstrap
 

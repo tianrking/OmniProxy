@@ -97,8 +97,9 @@ pub async fn run(config: AppConfig) -> Result<()> {
 
     let api_addr = config.api_listen_addr;
     let api_hub_for_server = api_hub.clone();
+    let api_max_lag = config.api_max_lag;
     tokio::spawn(async move {
-        if let Err(err) = serve_ws_api(api_addr, api_hub_for_server).await {
+        if let Err(err) = serve_ws_api(api_addr, api_hub_for_server, api_max_lag).await {
             error!(error = %err, "ws api server exited");
         }
     });

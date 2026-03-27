@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, bail};
 use futures_util::SinkExt;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -84,26 +84,33 @@ pub fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-pub async fn serve_ws_api(listen: std::net::SocketAddr, hub: ApiHub) -> Result<()> {
+pub async fn serve_ws_api(listen: std::net::SocketAddr, hub: ApiHub, max_lag: u64) -> Result<()> {
     let listener = TcpListener::bind(listen).await?;
-    info!(listen = %listen, "ws api listening");
+    info!(listen = %listen, max_lag, "ws api listening");
 
     loop {
         let (stream, peer) = listener.accept().await?;
         let hub = hub.clone();
+        let max_lag = max_lag;
         tokio::spawn(async move {
-            if let Err(err) = handle_connection(stream, peer.to_string(), hub).await {
+            if let Err(err) = handle_connection(stream, peer.to_string(), hub, max_lag).await {
                 debug!(peer = %peer, error = %err, "ws client closed");
             }
         });
     }
 }
 
-async fn handle_connection(stream: TcpStream, peer: String, hub: ApiHub) -> Result<()> {
+async fn handle_connection(
+    stream: TcpStream,
+    peer: String,
+    hub: ApiHub,
+    max_lag: u64,
+) -> Result<()> {
     let mut ws = accept_async(stream).await?;
     let mut rx = hub.subscribe();
+    let mut lagged_total: u64 = 0;
 
-    info!(peer, "ws api client connected");
+    info!(peer, max_lag, "ws api client connected");
     loop {
         match rx.recv().await {
             Ok(event) => {
@@ -111,7 +118,15 @@ async fn handle_connection(stream: TcpStream, peer: String, hub: ApiHub) -> Resu
                 ws.send(Message::Text(body.into())).await?;
             }
             Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                error!(peer, skipped, "ws api client lagged");
+                lagged_total = lagged_total.saturating_add(skipped);
+                error!(peer, skipped, lagged_total, max_lag, "ws api client lagged");
+                if lagged_total > max_lag {
+                    bail!(
+                        "ws api lag exceeded threshold: lagged_total={} max_lag={}",
+                        lagged_total,
+                        max_lag
+                    );
+                }
             }
             Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
         }
