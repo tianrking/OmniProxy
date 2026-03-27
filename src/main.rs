@@ -1,14 +1,6 @@
-mod api;
-mod cert;
-mod config;
-mod filter;
-mod plugins;
-mod proxy;
-mod query;
-
 use anyhow::Result;
 use clap::Parser;
-use config::Cli;
+use omni_proxy::config::Cli;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -24,8 +16,8 @@ async fn main() -> Result<()> {
         .compact()
         .init();
 
-    let app = config::AppConfig::from_cli(cli)?;
+    let app = omni_proxy::config::AppConfig::from_cli(cli)?;
     info!(listen = %app.listen_addr, "starting OmniProxy core");
 
-    proxy::run(app).await
+    omni_proxy::proxy::run(app).await
 }

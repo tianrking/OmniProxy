@@ -31,6 +31,12 @@ cargo run --release -- --listen 127.0.0.1:9090
 websocat ws://127.0.0.1:9091
 ```
 
+5. Run geek-first TUI (first iteration):
+
+```bash
+cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
+```
+
 ## Plugin Directory
 
 Default plugin directory: `~/.omni-proxy/plugins`
@@ -61,6 +67,12 @@ Built-in parser skeleton supports expressions such as:
 - `res.status >= 500 || req.method == "PUT"`
 
 This parser is ready to be wired into TUI/API query filtering.
+
+Current TUI supports:
+
+- flow list + detail pane
+- full keyboard navigation (`j/k`, `q`, `/`, `c`)
+- inline declarative filtering via DSL
 
 ## Architecture
 
