@@ -1,4 +1,4 @@
-use super::HttpFilter;
+use super::{HttpFilter, WebSocketFilter};
 use crate::{
     api::{ApiEvent, ApiHub, now_ms},
     plugins::WasmPluginHost,
@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use hudsucker::hyper::StatusCode;
 use hudsucker::hyper::header::{HeaderName, HeaderValue};
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
+use hudsucker::{WebSocketContext, tokio_tungstenite::tungstenite::Message};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{Arc, Mutex},
@@ -321,4 +322,101 @@ fn extract_host(req: &Request<Body>) -> String {
         .and_then(|v| v.to_str().ok())
         .map(ToOwned::to_owned)
         .unwrap_or_default()
+}
+
+#[derive(Clone, Default)]
+pub struct WsAccessLogFilter {
+    pub hub: Option<ApiHub>,
+    pub preview_bytes: usize,
+}
+
+impl WsAccessLogFilter {
+    pub fn with_hub(hub: Option<ApiHub>, preview_bytes: usize) -> Self {
+        Self { hub, preview_bytes }
+    }
+}
+
+#[async_trait]
+impl WebSocketFilter for WsAccessLogFilter {
+    async fn on_message(&self, _ctx: &WebSocketContext, msg: Message) -> Result<Option<Message>> {
+        let (kind, payload_len, preview) = match &msg {
+            Message::Text(text) => (
+                "text".to_string(),
+                text.len(),
+                Some(truncate_preview(text.as_str(), self.preview_bytes)),
+            ),
+            Message::Binary(bin) => (
+                "binary".to_string(),
+                bin.len(),
+                Some(format!("<binary:{} bytes>", bin.len())),
+            ),
+            Message::Ping(bin) => ("ping".to_string(), bin.len(), None),
+            Message::Pong(bin) => ("pong".to_string(), bin.len(), None),
+            Message::Close(frame) => (
+                "close".to_string(),
+                0,
+                frame
+                    .as_ref()
+                    .map(|f| format!("code={} reason={}", f.code, f.reason)),
+            ),
+            Message::Frame(_) => ("frame".to_string(), 0, None),
+        };
+
+        if let Some(hub) = &self.hub {
+            hub.publish(ApiEvent::WebSocketFrame {
+                timestamp_ms: now_ms(),
+                client: None,
+                kind,
+                payload_len,
+                preview,
+            });
+        }
+        Ok(Some(msg))
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct WsMutationFilter {
+    drop_ping: bool,
+    text_rewrites: Vec<(String, String)>,
+}
+
+impl WsMutationFilter {
+    pub fn new(drop_ping: bool, text_rewrites: Vec<(String, String)>) -> Self {
+        Self {
+            drop_ping,
+            text_rewrites,
+        }
+    }
+}
+
+#[async_trait]
+impl WebSocketFilter for WsMutationFilter {
+    async fn on_message(&self, _ctx: &WebSocketContext, msg: Message) -> Result<Option<Message>> {
+        let msg = match msg {
+            Message::Ping(_) if self.drop_ping => return Ok(None),
+            Message::Text(text) => {
+                let mut out = text.to_string();
+                for (from, to) in &self.text_rewrites {
+                    if !from.is_empty() {
+                        out = out.replace(from, to);
+                    }
+                }
+                Message::Text(out.into())
+            }
+            other => other,
+        };
+        Ok(Some(msg))
+    }
+}
+
+fn truncate_preview(input: &str, max_bytes: usize) -> String {
+    if input.len() <= max_bytes {
+        return input.to_string();
+    }
+    let mut end = max_bytes.min(input.len());
+    while !input.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}…", &input[..end])
 }

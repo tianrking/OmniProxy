@@ -111,8 +111,8 @@ Estimated remaining major iterations: **8**.
 
 ## Iteration Tracker
 
-1. `R1` WebSocket mutation hooks + ws filter pipeline: `IN_PROGRESS`
-2. `R2` Body capture with bounded memory and truncation policy: `TODO`
+1. `R1` WebSocket mutation hooks + ws filter pipeline: `DONE`
+2. `R2` Body capture with bounded memory and truncation policy: `IN_PROGRESS`
 3. `R3` Replay v2 with body replay and diff report: `TODO`
 4. `R4` Rule engine v2 operators + precedence model: `TODO`
 5. `R5` Wasm mutating ABI v1 and hostcall contract: `TODO`

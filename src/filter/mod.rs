@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
+use hudsucker::{WebSocketContext, tokio_tungstenite::tungstenite::Message};
 use std::sync::Arc;
 
 pub mod standard;
@@ -20,9 +21,21 @@ pub trait HttpFilter: Send + Sync {
     }
 }
 
+#[async_trait]
+pub trait WebSocketFilter: Send + Sync {
+    async fn on_message(&self, _ctx: &WebSocketContext, msg: Message) -> Result<Option<Message>> {
+        Ok(Some(msg))
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct FilterChain {
     filters: Arc<Vec<Arc<dyn HttpFilter>>>,
+}
+
+#[derive(Clone, Default)]
+pub struct WebSocketFilterChain {
+    filters: Arc<Vec<Arc<dyn WebSocketFilter>>>,
 }
 
 impl FilterChain {
@@ -59,5 +72,27 @@ impl FilterChain {
             res = filter.on_response(ctx, res).await?;
         }
         Ok(res)
+    }
+}
+
+impl WebSocketFilterChain {
+    pub fn new(filters: Vec<Arc<dyn WebSocketFilter>>) -> Self {
+        Self {
+            filters: Arc::new(filters),
+        }
+    }
+
+    pub async fn handle_message(
+        &self,
+        ctx: &WebSocketContext,
+        mut msg: Message,
+    ) -> Result<Option<Message>> {
+        for filter in self.filters.iter() {
+            let Some(next) = filter.on_message(ctx, msg).await? else {
+                return Ok(None);
+            };
+            msg = next;
+        }
+        Ok(Some(msg))
     }
 }

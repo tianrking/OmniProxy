@@ -37,6 +37,12 @@ pub struct Cli {
 
     #[arg(long, env = "OMNI_WS_PREVIEW_BYTES", default_value_t = 256_usize)]
     pub ws_preview_bytes: usize,
+
+    #[arg(long, env = "OMNI_WS_DROP_PING", default_value_t = false)]
+    pub ws_drop_ping: bool,
+
+    #[arg(long = "ws-text-rewrite", env = "OMNI_WS_TEXT_REWRITE")]
+    pub ws_text_rewrite: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +56,8 @@ pub struct AppConfig {
     pub flow_log_path: PathBuf,
     pub wasm_timeout_ms: u64,
     pub ws_preview_bytes: usize,
+    pub ws_drop_ping: bool,
+    pub ws_text_rewrite: Vec<(String, String)>,
 }
 
 impl AppConfig {
@@ -73,8 +81,21 @@ impl AppConfig {
             flow_log_path: expand_home(cli.flow_log),
             wasm_timeout_ms: cli.wasm_timeout_ms,
             ws_preview_bytes: cli.ws_preview_bytes,
+            ws_drop_ping: cli.ws_drop_ping,
+            ws_text_rewrite: parse_rewrite_rules(&cli.ws_text_rewrite)?,
         })
     }
+}
+
+fn parse_rewrite_rules(raw: &[String]) -> Result<Vec<(String, String)>> {
+    let mut out = Vec::new();
+    for item in raw {
+        let (from, to) = item
+            .split_once("=>")
+            .with_context(|| format!("invalid ws rewrite '{}', expect 'from=>to'", item))?;
+        out.push((from.to_string(), to.to_string()));
+    }
+    Ok(out)
 }
 
 fn expand_home(path: PathBuf) -> PathBuf {

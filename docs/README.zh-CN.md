@@ -71,6 +71,13 @@ WebSocket 预览截断长度：
 cargo run -- --ws-preview-bytes 256
 ```
 
+WebSocket 主动篡改开关：
+
+```bash
+cargo run -- --ws-drop-ping
+cargo run -- --ws-text-rewrite "foo=>bar" --ws-text-rewrite "token=>[REDACTED]"
+```
+
 ## 规则引擎
 
 默认规则文件：`~/.omni-proxy/rules.txt`

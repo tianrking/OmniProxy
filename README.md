@@ -63,6 +63,10 @@ WebSocket frame preview truncation can be tuned via:
 - `--ws-preview-bytes`
 - env: `OMNI_WS_PREVIEW_BYTES`
 
+WebSocket active mutation controls:
+- `--ws-drop-ping` (drop incoming ping frames)
+- `--ws-text-rewrite "from=>to"` (repeatable text rewrite rule)
+
 5. Run geek-first TUI (first iteration):
 
 ```bash
