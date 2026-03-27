@@ -322,11 +322,9 @@ impl WasmPluginHost {
         write_memory(&mut store, memory, in_ptr as usize, payload)?;
         let packed = hook_fn.call(&mut store, (in_ptr, payload.len() as i32))?;
         dealloc_fn.call(&mut store, (in_ptr, payload.len() as i32))?;
-        if packed == 0 {
+        let Some((out_ptr, out_len)) = unpack_ptr_len(packed) else {
             return Ok(None);
-        }
-        let out_ptr = ((packed >> 32) & 0xffff_ffff) as i32;
-        let out_len = (packed & 0xffff_ffff) as i32;
+        };
         if out_ptr <= 0 || out_len <= 0 {
             return Ok(None);
         }
@@ -337,6 +335,15 @@ impl WasmPluginHost {
         dealloc_fn.call(&mut store, (out_ptr, out_len))?;
         Ok(Some(out))
     }
+}
+
+fn unpack_ptr_len(packed: i64) -> Option<(i32, i32)> {
+    if packed == 0 {
+        return None;
+    }
+    let ptr = ((packed >> 32) & 0xffff_ffff) as i32;
+    let len = (packed & 0xffff_ffff) as i32;
+    Some((ptr, len))
 }
 
 fn get_hook<P, R>(
@@ -395,5 +402,37 @@ fn res_for_blocking(res: &Response<Body>) -> ResponseSnapshot {
                 )
             })
             .collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unpack_ptr_len() {
+        let ptr: i32 = 321;
+        let len: i32 = 654;
+        let packed = ((ptr as i64) << 32) | (len as u32 as i64);
+        assert_eq!(unpack_ptr_len(packed), Some((ptr, len)));
+        assert_eq!(unpack_ptr_len(0), None);
+    }
+
+    #[test]
+    fn test_request_mutation_compat() {
+        let json = r#"{"add_headers":[["x-a","1"]],"unknown":"ignored"}"#;
+        let m: RequestMutation = serde_json::from_str(json).expect("deserialize request mutation");
+        assert_eq!(m.add_headers.len(), 1);
+    }
+
+    #[test]
+    fn test_response_mutation_compat() {
+        let json =
+            r#"{"add_headers":[["x-a","1"]],"set_status":451,"replace_body":"x","unknown":1}"#;
+        let m: ResponseMutation =
+            serde_json::from_str(json).expect("deserialize response mutation");
+        assert_eq!(m.set_status, Some(451));
+        assert_eq!(m.replace_body.as_deref(), Some("x"));
+        assert_eq!(m.add_headers.len(), 1);
     }
 }

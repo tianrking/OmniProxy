@@ -91,6 +91,7 @@ Execution cadence:
   - CPU/memory/failure budget
   - Panic/fault isolation metrics
   - status: 插件 failure budget 已接入（`--wasm-max-failures`）
+  - status+: ABI 兼容性单测已接入（mutation payload 兼容反序列化）
 - Exit criteria:
   - Plugin timeout/fault does not block core forwarding path
 
@@ -130,6 +131,7 @@ Execution cadence:
   - status: `omni-bench` 基准工具已接入（requests/concurrency/rps/latency p50/p95/p99）
   - status+: release workflow 已接入 SHA256SUMS 与 PROVENANCE.json 产出
   - status++: `omni-converge` 收敛工具已接入（http1/http2pref 并发收敛压测）
+  - status+++: `docs/RUNBOOK.md` 已接入最终 Go/No-Go 清单
 - Exit criteria:
   - v1.0.0 release candidate with reproducible CI artifacts
 

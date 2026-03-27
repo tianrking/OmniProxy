@@ -220,6 +220,7 @@ Event categories:
 ## 10. API Contract Reference
 
 1. `docs/API_CONTRACT.md` defines the backend event schema for `HttpRequest` / `HttpResponse` / `WebSocketFrame`.
+2. `docs/RUNBOOK.md` provides final convergence and release checklist.
 
 ## 11. Wasm Mutating ABI (v1 baseline)
 

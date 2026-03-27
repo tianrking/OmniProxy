@@ -75,7 +75,7 @@ Status legend:
 3. Fail-open behavior: `DONE`
 4. Stable mutating ABI v1 (req/res edit actions): `IN_PROGRESS`
 5. Resource budgets (CPU/memory/fault counters): `IN_PROGRESS`
-6. Versioned ABI compatibility tests: `TODO`
+6. Versioned ABI compatibility tests: `IN_PROGRESS`
 
 ## F. UX and Operations
 

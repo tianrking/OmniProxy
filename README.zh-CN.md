@@ -183,6 +183,7 @@ cargo run --bin omni-converge -- --url https://example.com --requests 4000 --con
 
 API 合同文档：
 1. `docs/API_CONTRACT.md`
+2. `docs/RUNBOOK.md`（v1.0 运维与收敛检查清单）
 
 ## 后续重点
 

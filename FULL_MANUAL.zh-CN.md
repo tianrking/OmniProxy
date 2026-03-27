@@ -221,6 +221,7 @@ websocat ws://127.0.0.1:9091
 ## 10. API 合同参考
 
 1. `docs/API_CONTRACT.md` 定义了后端 `HttpRequest` / `HttpResponse` / `WebSocketFrame` 事件结构。
+2. `docs/RUNBOOK.md` 提供最终收敛与发布检查清单。
 
 ## 11. Wasm 可变更 ABI（v1 基线）
 
