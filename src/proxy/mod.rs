@@ -124,7 +124,10 @@ pub async fn run(config: AppConfig) -> Result<()> {
     let chain = FilterChain::new(vec![
         Arc::new(RequestIdFilter),
         Arc::new(RuleFilter::new(rules)),
-        Arc::new(AccessLogFilter::with_hub(Some(api_hub.clone()))),
+        Arc::new(AccessLogFilter::with_hub(
+            Some(api_hub.clone()),
+            config.capture_body_max_bytes,
+        )),
         Arc::new(WasmFilter::new(wasm_host)),
     ]);
     let ws_chain = WebSocketFilterChain::new(vec![

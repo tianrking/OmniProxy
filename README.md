@@ -77,6 +77,7 @@ cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
 
 - `~/.omni-proxy/flows.jsonl`
 - override with `--flow-log /path/to/flows.jsonl`
+- bounded body capture for events/logging: `--capture-body-max-bytes` (default `65536`)
 
 7. Replay v1 from persisted flows:
 

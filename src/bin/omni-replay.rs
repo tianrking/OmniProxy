@@ -158,6 +158,7 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
             method,
             uri,
             headers,
+            ..
         } = event
         {
             out.push(ReplayCandidate {

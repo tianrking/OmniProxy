@@ -57,6 +57,7 @@ Execution cadence:
   - Capture and replay request body (json/form/binary-safe)
   - Better request/response pairing for keep-alive and multiplexed traffic
   - Replay result diff view (status/header/body hash)
+  - status: request/response body bounded capture (event/log base64) 已接入
 - Exit criteria:
   - `omni-replay` can replay captured body with deterministic request-id correlation
 

@@ -43,6 +43,13 @@ pub struct Cli {
 
     #[arg(long = "ws-text-rewrite", env = "OMNI_WS_TEXT_REWRITE")]
     pub ws_text_rewrite: Vec<String>,
+
+    #[arg(
+        long,
+        env = "OMNI_CAPTURE_BODY_MAX_BYTES",
+        default_value_t = 65536_usize
+    )]
+    pub capture_body_max_bytes: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +65,7 @@ pub struct AppConfig {
     pub ws_preview_bytes: usize,
     pub ws_drop_ping: bool,
     pub ws_text_rewrite: Vec<(String, String)>,
+    pub capture_body_max_bytes: usize,
 }
 
 impl AppConfig {
@@ -83,6 +91,7 @@ impl AppConfig {
             ws_preview_bytes: cli.ws_preview_bytes,
             ws_drop_ping: cli.ws_drop_ping,
             ws_text_rewrite: parse_rewrite_rules(&cli.ws_text_rewrite)?,
+            capture_body_max_bytes: cli.capture_body_max_bytes,
         })
     }
 }

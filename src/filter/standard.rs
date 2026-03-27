@@ -6,6 +6,8 @@ use crate::{
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use base64::Engine as _;
+use http_body_util::{BodyExt, Full};
 use hudsucker::hyper::StatusCode;
 use hudsucker::hyper::header::{HeaderName, HeaderValue};
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
@@ -41,13 +43,15 @@ impl HttpFilter for RequestIdFilter {
 #[derive(Clone, Default)]
 pub struct AccessLogFilter {
     pub hub: Option<ApiHub>,
+    pub capture_body_max_bytes: usize,
     inflight_req_ids: Arc<Mutex<HashMap<String, VecDeque<String>>>>,
 }
 
 impl AccessLogFilter {
-    pub fn with_hub(hub: Option<ApiHub>) -> Self {
+    pub fn with_hub(hub: Option<ApiHub>, capture_body_max_bytes: usize) -> Self {
         Self {
             hub,
+            capture_body_max_bytes,
             inflight_req_ids: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -74,6 +78,7 @@ impl AccessLogFilter {
 #[async_trait]
 impl HttpFilter for AccessLogFilter {
     async fn on_request(&self, ctx: &HttpContext, req: Request<Body>) -> Result<RequestOrResponse> {
+        let (req, req_body) = capture_request_body(req, self.capture_body_max_bytes).await?;
         let client = ctx.client_addr.to_string();
         let request_id = req
             .headers()
@@ -100,6 +105,9 @@ impl HttpFilter for AccessLogFilter {
                         )
                     })
                     .collect(),
+                body_b64: req_body.body_b64,
+                body_truncated: req_body.body_truncated,
+                body_size: req_body.body_size,
             });
         }
         info!(
@@ -111,11 +119,8 @@ impl HttpFilter for AccessLogFilter {
         Ok(req.into())
     }
 
-    async fn on_response(
-        &self,
-        ctx: &HttpContext,
-        mut res: Response<Body>,
-    ) -> Result<Response<Body>> {
+    async fn on_response(&self, ctx: &HttpContext, res: Response<Body>) -> Result<Response<Body>> {
+        let (mut res, res_body) = capture_response_body(res, self.capture_body_max_bytes).await?;
         let client = ctx.client_addr.to_string();
         let from_header = res
             .headers()
@@ -145,6 +150,9 @@ impl HttpFilter for AccessLogFilter {
                         )
                     })
                     .collect(),
+                body_b64: res_body.body_b64,
+                body_truncated: res_body.body_truncated,
+                body_size: res_body.body_size,
             });
         }
         info!(
@@ -419,4 +427,86 @@ fn truncate_preview(input: &str, max_bytes: usize) -> String {
         end -= 1;
     }
     format!("{}…", &input[..end])
+}
+
+#[derive(Debug, Clone, Default)]
+struct CapturedBody {
+    body_b64: Option<String>,
+    body_truncated: bool,
+    body_size: Option<usize>,
+}
+
+async fn capture_request_body(
+    req: Request<Body>,
+    max_bytes: usize,
+) -> Result<(Request<Body>, CapturedBody)> {
+    let (parts, body) = req.into_parts();
+    let Some(content_len) = content_length(parts.headers.get("content-length")) else {
+        return Ok((Request::from_parts(parts, body), CapturedBody::default()));
+    };
+    if max_bytes == 0 || content_len > max_bytes {
+        return Ok((
+            Request::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size: Some(content_len),
+            },
+        ));
+    }
+
+    let bytes = body.collect().await?.to_bytes();
+    let encoded = if bytes.is_empty() {
+        None
+    } else {
+        Some(base64::engine::general_purpose::STANDARD.encode(bytes.as_ref()))
+    };
+    Ok((
+        Request::from_parts(parts, Body::from(Full::new(bytes))),
+        CapturedBody {
+            body_b64: encoded,
+            body_truncated: false,
+            body_size: Some(content_len),
+        },
+    ))
+}
+
+async fn capture_response_body(
+    res: Response<Body>,
+    max_bytes: usize,
+) -> Result<(Response<Body>, CapturedBody)> {
+    let (parts, body) = res.into_parts();
+    let Some(content_len) = content_length(parts.headers.get("content-length")) else {
+        return Ok((Response::from_parts(parts, body), CapturedBody::default()));
+    };
+    if max_bytes == 0 || content_len > max_bytes {
+        return Ok((
+            Response::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size: Some(content_len),
+            },
+        ));
+    }
+
+    let bytes = body.collect().await?.to_bytes();
+    let encoded = if bytes.is_empty() {
+        None
+    } else {
+        Some(base64::engine::general_purpose::STANDARD.encode(bytes.as_ref()))
+    };
+    Ok((
+        Response::from_parts(parts, Body::from(Full::new(bytes))),
+        CapturedBody {
+            body_b64: encoded,
+            body_truncated: false,
+            body_size: Some(content_len),
+        },
+    ))
+}
+
+fn content_length(v: Option<&HeaderValue>) -> Option<usize> {
+    v.and_then(|x| x.to_str().ok())
+        .and_then(|s| s.parse::<usize>().ok())
 }

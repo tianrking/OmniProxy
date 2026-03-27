@@ -26,6 +26,12 @@ pub enum ApiEvent {
         uri: String,
         #[serde(default)]
         headers: Vec<(String, String)>,
+        #[serde(default)]
+        body_b64: Option<String>,
+        #[serde(default)]
+        body_truncated: bool,
+        #[serde(default)]
+        body_size: Option<usize>,
     },
     HttpResponse {
         #[serde(default)]
@@ -36,6 +42,12 @@ pub enum ApiEvent {
         status: u16,
         #[serde(default)]
         headers: Vec<(String, String)>,
+        #[serde(default)]
+        body_b64: Option<String>,
+        #[serde(default)]
+        body_truncated: bool,
+        #[serde(default)]
+        body_size: Option<usize>,
     },
     WebSocketFrame {
         #[serde(default)]

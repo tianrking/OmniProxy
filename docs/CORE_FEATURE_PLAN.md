@@ -42,7 +42,7 @@ Status legend:
 1. Real-time event bus (ws API): `DONE`
 2. Persistent flow logging (JSONL): `DONE`
 3. Request/response headers capture: `DONE`
-4. Request/response body capture (binary-safe): `TODO`
+4. Request/response body capture (binary-safe): `IN_PROGRESS`
 5. Truncation/sampling policy for huge payloads: `TODO`
 6. Compression-aware storage strategy: `TODO`
 7. Flow retention and rotation policy: `TODO`
