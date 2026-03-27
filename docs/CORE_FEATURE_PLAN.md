@@ -94,7 +94,7 @@ Status legend:
 4. CI: `.deb` packaging: `DONE`
 5. CI: fmt/check/test + rules preflight gate: `DONE`
 6. Performance benchmark suite (latency/memory/concurrency): `IN_PROGRESS`
-7. Signed release artifacts and provenance: `TODO`
+7. Signed release artifacts and provenance: `IN_PROGRESS`
 
 ## Iteration Execution Plan (Remaining)
 

@@ -15,6 +15,9 @@ CI includes multi-target build and `.deb` packaging.
 Core implementation checklist:
 - `docs/CORE_FEATURE_PLAN.md`
 
+Release hardening:
+- `.github/workflows/release.yml` builds release bundle + `SHA256SUMS` + `PROVENANCE.json`.
+
 Rules engine:
 
 - default file: `~/.omni-proxy/rules.txt`

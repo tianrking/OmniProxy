@@ -1,0 +1,57 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: build (linux-amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p dist
+          cp target/release/omni_proxy dist/omni_proxy-linux-amd64
+          cp target/release/omni-tui dist/omni-tui-linux-amd64
+          cp target/release/omni-replay dist/omni-replay-linux-amd64
+          cp target/release/omni-bench dist/omni-bench-linux-amd64
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+
+      - name: Generate provenance manifest
+        run: |
+          mkdir -p dist
+          cat > dist/PROVENANCE.json <<EOF
+          {
+            "repository": "${{ github.repository }}",
+            "ref": "${{ github.ref }}",
+            "sha": "${{ github.sha }}",
+            "run_id": "${{ github.run_id }}",
+            "generated_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: omni-release-bundle-linux-amd64
+          path: dist/*
+          if-no-files-found: error
