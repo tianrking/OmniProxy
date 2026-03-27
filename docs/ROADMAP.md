@@ -60,6 +60,7 @@ Execution cadence:
   - status: request/response body bounded capture (event/log base64) 已接入
   - status+: replay 已支持 body 重放及捕获响应差异摘要（status/body-bytes）
   - status++: body 捕获采样率、压缩策略与 flow 日志轮转保留已接入
+  - status+++: replay 差异报告已升级到 header/body hash
 - Exit criteria:
   - `omni-replay` can replay captured body with deterministic request-id correlation
 

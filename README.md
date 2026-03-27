@@ -93,6 +93,12 @@ cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
 cargo run --bin omni-replay -- --index 12 --no-body
 ```
 
+Replay output now includes captured-vs-live diff for:
+- status code
+- body size
+- response headers SHA-256 hash
+- response body SHA-256 hash
+
 8. Validate rules before starting proxy:
 
 ```bash

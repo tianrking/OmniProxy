@@ -4,6 +4,7 @@ use clap::Parser;
 use omni_proxy::api::ApiEvent;
 use reqwest::Method;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, VecDeque};
 use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
 
@@ -58,6 +59,8 @@ struct ReplayCandidate {
 struct ResponseSnapshot {
     status: u16,
     body_size: Option<usize>,
+    headers_hash: String,
+    body_hash: Option<String>,
 }
 
 #[tokio::main]
@@ -140,7 +143,14 @@ async fn main() -> Result<()> {
     }
     let resp = req.send().await?;
     let status = resp.status();
+    let live_headers = normalize_headers(headers_to_pairs(resp.headers()));
     let bytes = resp.bytes().await?;
+    let live_headers_hash = hash_headers(&live_headers);
+    let live_body_hash = if bytes.is_empty() {
+        None
+    } else {
+        Some(hash_bytes(&bytes))
+    };
 
     println!("replayed index: {}", candidate.index);
     println!(
@@ -174,6 +184,25 @@ async fn main() -> Result<()> {
                 Some(n) if n == bytes.len() => "no",
                 Some(_) => "yes",
                 None => "unknown",
+            }
+        );
+        println!(
+            "captured response headers_hash: {} (diff={})",
+            captured.headers_hash,
+            if captured.headers_hash == live_headers_hash {
+                "no"
+            } else {
+                "yes"
+            }
+        );
+        println!(
+            "captured response body_hash: {} (diff={})",
+            captured.body_hash.as_deref().unwrap_or("-"),
+            match (&captured.body_hash, &live_body_hash) {
+                (Some(a), Some(b)) if a == b => "no",
+                (Some(_), Some(_)) => "yes",
+                (None, None) => "no",
+                _ => "unknown",
             }
         );
     }
@@ -236,6 +265,8 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
                 request_id,
                 client,
                 status,
+                headers,
+                body_b64,
                 body_size,
                 ..
             } => {
@@ -249,7 +280,17 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
                     });
                 if let Some(idx) = target {
                     if let Some(req) = out.get_mut(idx) {
-                        req.captured_response = Some(ResponseSnapshot { status, body_size });
+                        let normalized_headers = normalize_headers(headers);
+                        let body_hash = body_b64
+                            .as_deref()
+                            .and_then(|v| base64::engine::general_purpose::STANDARD.decode(v).ok())
+                            .map(|v| hash_bytes(&v));
+                        req.captured_response = Some(ResponseSnapshot {
+                            status,
+                            body_size,
+                            headers_hash: hash_headers(&normalized_headers),
+                            body_hash,
+                        });
                     }
                 }
             }
@@ -330,4 +371,44 @@ fn render_curl(method: &str, uri: &str, headers: &HeaderMap) -> String {
 
 fn shell_escape_single(s: &str) -> String {
     s.replace('\'', "'\"'\"'")
+}
+
+fn headers_to_pairs(headers: &HeaderMap) -> Vec<(String, String)> {
+    headers
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.to_string(),
+                String::from_utf8_lossy(v.as_bytes()).to_string(),
+            )
+        })
+        .collect()
+}
+
+fn normalize_headers(mut headers: Vec<(String, String)>) -> Vec<(String, String)> {
+    headers.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+    headers
+}
+
+fn hash_headers(headers: &[(String, String)]) -> String {
+    let mut hasher = Sha256::new();
+    for (k, v) in headers {
+        hasher.update(k.as_bytes());
+        hasher.update(b":");
+        hasher.update(v.as_bytes());
+        hasher.update(b"\n");
+    }
+    let out = hasher.finalize();
+    to_hex(out.as_slice())
+}
+
+fn hash_bytes(data: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let out = hasher.finalize();
+    to_hex(out.as_slice())
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
