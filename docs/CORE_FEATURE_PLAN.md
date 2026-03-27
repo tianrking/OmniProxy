@@ -65,8 +65,8 @@ Status legend:
 5. Response status override: `DONE`
 6. Response body replacement: `DONE`
 7. Rule lint / validate command: `DONE` (`--check-rules`)
-8. Advanced operators (`starts_with`, regex-lite): `IN_PROGRESS`
-9. Rule precedence/conflict strategy: `TODO`
+8. Advanced operators (`starts_with`, regex-lite): `DONE`
+9. Rule precedence/conflict strategy: `DONE`
 
 ## E. Plugin Runtime (Wasm)
 

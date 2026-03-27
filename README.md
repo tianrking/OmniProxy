@@ -23,12 +23,14 @@ Rules engine:
 - supported request fields now include `req.method`, `req.host`, `req.uri`
 - string contains operator: `~=`
 - string prefix/suffix operators: `starts_with`, `ends_with`
+- regex-lite operator: `matches` (e.g. `req.uri matches "^/api/v[0-9]+/users$"`)
 - action syntax:
   - `deny <expr>`
   - `req.set_header Header: Value if <expr>`
   - `res.set_header Header: Value if <expr>`
   - `res.set_status 4xx/5xx if <expr>`
   - `res.replace_body "text" if <expr>`
+  - conflict strategy for `res.set_status`/`res.replace_body`: first matched rule wins
 
 Current phase (core-first, no UI):
 

@@ -70,6 +70,7 @@ Execution cadence:
   - Action precedence and conflict policy
   - Rule lint/check subcommand
   - status: `starts_with` / `ends_with` 已接入 DSL
+  - status+: `matches` regex-lite 已接入，`res.set_status/res.replace_body` 冲突采用 first-match-wins
 - Exit criteria:
   - `omni_proxy --check-rules` validates files and prints actionable diagnostics
 

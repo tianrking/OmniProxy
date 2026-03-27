@@ -100,6 +100,14 @@ cargo run -- --ws-text-rewrite "foo=>bar" --ws-text-rewrite "token=>[REDACTED]"
 1. `req.uri starts_with "/api/"`
 2. `req.host ends_with ".internal"`
 
+正则轻量匹配（regex-lite）：
+
+1. `req.uri matches "^/api/v[0-9]+/users$"`
+
+冲突处理策略：
+
+1. `res.set_status` / `res.replace_body` 多条命中时采用“首条命中优先（first-match-wins）”。
+
 示例：
 
 ```txt

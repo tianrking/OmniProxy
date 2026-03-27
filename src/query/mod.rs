@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use anyhow::{Result, bail};
+use regex::Regex;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -23,6 +24,7 @@ pub enum Op {
     Contains,
     StartsWith,
     EndsWith,
+    Matches,
     Gte,
     Lte,
 }
@@ -66,6 +68,11 @@ impl Expr {
                     .as_ref()
                     .map(|u| u.ends_with(s))
                     .unwrap_or(false),
+                (Field::ReqUri, Op::Matches, Value::Str(s)) => ctx
+                    .req_uri
+                    .as_ref()
+                    .map(|u| Regex::new(s).map(|re| re.is_match(u)).unwrap_or(false))
+                    .unwrap_or(false),
                 (Field::ReqHost, Op::Eq, Value::Str(s)) => {
                     ctx.req_host.as_ref().map(|h| h == s).unwrap_or(false)
                 }
@@ -84,6 +91,11 @@ impl Expr {
                     .as_ref()
                     .map(|h| h.ends_with(s))
                     .unwrap_or(false),
+                (Field::ReqHost, Op::Matches, Value::Str(s)) => ctx
+                    .req_host
+                    .as_ref()
+                    .map(|h| Regex::new(s).map(|re| re.is_match(h)).unwrap_or(false))
+                    .unwrap_or(false),
                 (Field::ReqMethod, Op::StartsWith, Value::Str(s)) => ctx
                     .req_method
                     .as_ref()
@@ -93,6 +105,11 @@ impl Expr {
                     .req_method
                     .as_ref()
                     .map(|m| m.ends_with(s))
+                    .unwrap_or(false),
+                (Field::ReqMethod, Op::Matches, Value::Str(s)) => ctx
+                    .req_method
+                    .as_ref()
+                    .map(|m| Regex::new(s).map(|re| re.is_match(m)).unwrap_or(false))
                     .unwrap_or(false),
                 (Field::ResStatus, Op::Eq, Value::Int(i)) => {
                     ctx.res_status.map(|x| x as i64 == *i).unwrap_or(false)
@@ -126,7 +143,9 @@ pub fn parse(input: &str) -> Result<Expr> {
 }
 
 fn parse_cmp(input: &str) -> Result<Expr> {
-    let (op, parts) = if let Some(parts) = input.split_once(" starts_with ") {
+    let (op, parts) = if let Some(parts) = input.split_once(" matches ") {
+        (Op::Matches, parts)
+    } else if let Some(parts) = input.split_once(" starts_with ") {
         (Op::StartsWith, parts)
     } else if let Some(parts) = input.split_once(" ends_with ") {
         (Op::EndsWith, parts)
@@ -214,6 +233,16 @@ mod tests {
         let ctx = EvalContext {
             req_uri: Some("/api/v1/items".into()),
             req_host: Some("svc.example.com".into()),
+            ..EvalContext::default()
+        };
+        assert!(expr.eval(&ctx));
+    }
+
+    #[test]
+    fn test_regex_lite_matches() {
+        let expr = parse(r#"req.uri matches "^/api/v[0-9]+/items$""#).expect("parse");
+        let ctx = EvalContext {
+            req_uri: Some("/api/v2/items".into()),
             ..EvalContext::default()
         };
         assert!(expr.eval(&ctx));

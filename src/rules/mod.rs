@@ -130,12 +130,12 @@ impl RuleEngine {
                     }
                 }
                 RuleAction::SetResStatus { status, when } => {
-                    if when.eval(&ctx) {
+                    if when.eval(&ctx) && out.override_status.is_none() {
                         out.override_status = Some(*status);
                     }
                 }
                 RuleAction::ReplaceResBody { body, when } => {
-                    if when.eval(&ctx) {
+                    if when.eval(&ctx) && out.replace_body.is_none() {
                         out.replace_body = Some(body.clone());
                     }
                 }
@@ -288,6 +288,28 @@ res.replace_body "rewritten" if req.method == GET
         assert_eq!(out.add_headers, vec![("x-policy".into(), "hit".into())]);
         assert_eq!(out.override_status, Some(418));
         assert_eq!(out.replace_body, Some("rewritten".into()));
+    }
+
+    #[test]
+    fn response_conflict_uses_first_match_wins() {
+        let path = write_rule_file(
+            r#"
+res.set_status 451 if req.uri ~= "/blocked"
+res.set_status 418 if req.uri ~= "/blocked"
+res.replace_body "first" if req.uri ~= "/blocked"
+res.replace_body "second" if req.uri ~= "/blocked"
+"#,
+        );
+        let rules = RuleEngine::load(&path).expect("load rules");
+        let _ = fs::remove_file(&path);
+        let req = RequestMeta {
+            method: "GET".into(),
+            uri: "https://svc.local/blocked".into(),
+            host: "svc.local".into(),
+        };
+        let out = rules.eval_response(&req, 500);
+        assert_eq!(out.override_status, Some(451));
+        assert_eq!(out.replace_body, Some("first".into()));
     }
 
     #[test]
