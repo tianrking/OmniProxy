@@ -2,7 +2,7 @@
 
 OmniProxy is a modern MITM proxy core for API debugging and security analysis.
 
-中文文档: `docs/README.zh-CN.md`
+中文文档: `README.zh-CN.md`
 
 Cross-platform target:
 
