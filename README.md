@@ -19,6 +19,7 @@ Core implementation checklist:
 
 Release hardening:
 - `.github/workflows/release.yml` builds release bundle + `SHA256SUMS` + `PROVENANCE.json`.
+- release workflow also signs `SHA256SUMS` using keyless sigstore (`SHA256SUMS.sig` + `SHA256SUMS.pem`).
 
 Rules engine:
 

@@ -196,6 +196,8 @@ Event categories:
    1. binaries
    2. `SHA256SUMS`
    3. `PROVENANCE.json`
+   4. `SHA256SUMS.sig`
+   5. `SHA256SUMS.pem`
 
 ## 10. API Contract Reference
 

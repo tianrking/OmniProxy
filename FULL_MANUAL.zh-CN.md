@@ -197,6 +197,8 @@ websocat ws://127.0.0.1:9091
    1. 二进制产物
    2. `SHA256SUMS`
    3. `PROVENANCE.json`
+   4. `SHA256SUMS.sig`
+   5. `SHA256SUMS.pem`
 
 ## 10. API 合同参考
 
