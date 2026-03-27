@@ -1,0 +1,67 @@
+# OmniProxy
+
+OmniProxy is a modern MITM proxy core for API debugging and security analysis.
+
+Current phase (core-first, no UI):
+
+- Explicit HTTP proxy + HTTPS `CONNECT` interception via MITM
+- Dynamic certificate issuance with local CA bootstrap
+- Filter-chain architecture inspired by Envoy/Pingora
+- Wasm plugin host (Wasmtime) with request/response hooks
+- WebSocket forwarding support through the underlying proxy engine
+
+## Quick Start
+
+1. Run:
+
+```bash
+cargo run --release -- --listen 127.0.0.1:9090
+```
+
+2. Configure your client/system proxy to `127.0.0.1:9090`.
+
+3. Trust the generated CA certificate:
+
+- Certificate path: `~/.omni-proxy/ca.crt`
+- Key path: `~/.omni-proxy/ca.key`
+
+4. Subscribe backend event stream (for future UI):
+
+```bash
+websocat ws://127.0.0.1:9091
+```
+
+## Plugin Directory
+
+Default plugin directory: `~/.omni-proxy/plugins`
+
+Any `*.wasm` file in this directory is loaded on startup.
+
+Current ABI (v0):
+
+- export memory: `memory`
+- export alloc: `alloc(i32) -> i32`
+- export dealloc: `dealloc(i32, i32) -> ()`
+- optional hook: `on_http_request(i32, i32) -> i32`
+- optional hook: `on_http_response(i32, i32) -> i32`
+
+The two hook functions receive a UTF-8 JSON payload pointer/length.
+Return `0` for success; non-zero values are logged as warnings.
+
+Wasm execution is isolated and fail-open:
+
+- plugin timeout: `--wasm-timeout-ms` (default `20`)
+- timeout/trap/plugin error will be logged, but proxy core keeps running
+
+## Filter Query DSL (Core)
+
+Built-in parser skeleton supports expressions such as:
+
+- `req.method == "POST" && res.status >= 400`
+- `res.status >= 500 || req.method == "PUT"`
+
+This parser is ready to be wired into TUI/API query filtering.
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).

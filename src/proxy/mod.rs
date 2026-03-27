@@ -1,0 +1,118 @@
+use crate::{
+    api::{ApiHub, serve_ws_api},
+    cert::load_or_init_issuer,
+    config::AppConfig,
+    filter::{
+        FilterChain,
+        standard::{AccessLogFilter, RequestIdFilter, WasmFilter},
+    },
+    plugins::WasmPluginHost,
+};
+use anyhow::{Context, Result};
+use hudsucker::{
+    Body, HttpContext, HttpHandler, Proxy, RequestOrResponse, WebSocketContext, WebSocketHandler,
+    certificate_authority::RcgenAuthority, hyper::Request, hyper::Response,
+    rustls::crypto::aws_lc_rs, tokio_tungstenite::tungstenite::Message,
+};
+use std::sync::Arc;
+use tracing::{error, info};
+
+#[derive(Clone)]
+struct OmniHandler {
+    chain: FilterChain,
+}
+
+impl HttpHandler for OmniHandler {
+    async fn handle_request(&mut self, ctx: &HttpContext, req: Request<Body>) -> RequestOrResponse {
+        match self.chain.handle_request(ctx, req).await {
+            Ok(decision) => decision,
+            Err(err) => {
+                error!(error = %err, "request filter failed");
+                Response::builder()
+                    .status(500)
+                    .body(Body::from(format!("OmniProxy request error: {err}")))
+                    .expect("build response")
+                    .into()
+            }
+        }
+    }
+
+    async fn handle_response(&mut self, ctx: &HttpContext, res: Response<Body>) -> Response<Body> {
+        match self.chain.handle_response(ctx, res).await {
+            Ok(res) => res,
+            Err(err) => {
+                error!(error = %err, "response filter failed");
+                Response::builder()
+                    .status(500)
+                    .body(Body::from(format!("OmniProxy response error: {err}")))
+                    .expect("build response")
+            }
+        }
+    }
+}
+
+impl WebSocketHandler for OmniHandler {
+    async fn handle_message(&mut self, _ctx: &WebSocketContext, msg: Message) -> Option<Message> {
+        Some(msg)
+    }
+}
+
+pub async fn run(config: AppConfig) -> Result<()> {
+    if !config.plugin_dir.exists() {
+        tokio::fs::create_dir_all(&config.plugin_dir)
+            .await
+            .with_context(|| format!("create plugin dir {}", config.plugin_dir.display()))?;
+    }
+
+    let api_hub = ApiHub::new(4096);
+    let api_addr = config.api_listen_addr;
+    let api_hub_clone = api_hub.clone();
+    tokio::spawn(async move {
+        if let Err(err) = serve_ws_api(api_addr, api_hub_clone).await {
+            error!(error = %err, "ws api server exited");
+        }
+    });
+
+    let issuer = load_or_init_issuer(&config.ca_cert_path, &config.ca_key_path).await?;
+    let authority = RcgenAuthority::new(issuer, 10_000, aws_lc_rs::default_provider());
+    info!(
+        cert = %config.ca_cert_path.display(),
+        key = %config.ca_key_path.display(),
+        "CA ready"
+    );
+
+    let wasm_host = Arc::new(WasmPluginHost::load(
+        &config.plugin_dir,
+        config.wasm_timeout_ms,
+    )?);
+    let chain = FilterChain::new(vec![
+        Arc::new(RequestIdFilter),
+        Arc::new(AccessLogFilter { hub: Some(api_hub) }),
+        Arc::new(WasmFilter::new(wasm_host)),
+    ]);
+
+    let handler = OmniHandler { chain };
+
+    let proxy = Proxy::builder()
+        .with_addr(config.listen_addr)
+        .with_ca(authority)
+        .with_rustls_connector(aws_lc_rs::default_provider())
+        .with_http_handler(handler.clone())
+        .with_websocket_handler(handler)
+        .with_graceful_shutdown(shutdown_signal())
+        .build()
+        .context("build proxy")?;
+
+    info!(
+        listen = %config.listen_addr,
+        api = %config.api_listen_addr,
+        "OmniProxy running"
+    );
+    proxy.start().await.map_err(|e| anyhow::anyhow!(e))
+}
+
+async fn shutdown_signal() {
+    if let Err(err) = tokio::signal::ctrl_c().await {
+        error!(error = %err, "failed to install ctrl-c handler");
+    }
+}
