@@ -36,11 +36,27 @@ pub struct AccessLogFilter {
 #[async_trait]
 impl HttpFilter for AccessLogFilter {
     async fn on_request(&self, ctx: &HttpContext, req: Request<Body>) -> Result<RequestOrResponse> {
+        let request_id = req
+            .headers()
+            .get("x-omni-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(ToOwned::to_owned);
         if let Some(hub) = &self.hub {
             hub.publish(ApiEvent::HttpRequest {
+                request_id,
                 client: ctx.client_addr.to_string(),
                 method: req.method().to_string(),
                 uri: req.uri().to_string(),
+                headers: req
+                    .headers()
+                    .iter()
+                    .map(|(k, v)| {
+                        (
+                            k.to_string(),
+                            String::from_utf8_lossy(v.as_bytes()).to_string(),
+                        )
+                    })
+                    .collect(),
             });
         }
         info!(
@@ -53,8 +69,14 @@ impl HttpFilter for AccessLogFilter {
     }
 
     async fn on_response(&self, ctx: &HttpContext, res: Response<Body>) -> Result<Response<Body>> {
+        let request_id = res
+            .headers()
+            .get("x-omni-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(ToOwned::to_owned);
         if let Some(hub) = &self.hub {
             hub.publish(ApiEvent::HttpResponse {
+                request_id,
                 client: ctx.client_addr.to_string(),
                 status: res.status().as_u16(),
             });

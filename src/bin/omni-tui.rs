@@ -256,6 +256,7 @@ impl App {
                 client,
                 method,
                 uri,
+                ..
             } => {
                 let idx = self.flows.len();
                 self.flows.push(Flow {
@@ -266,7 +267,7 @@ impl App {
                 });
                 self.latest_req_idx_by_client.insert(client, idx);
             }
-            ApiEvent::HttpResponse { client, status } => {
+            ApiEvent::HttpResponse { client, status, .. } => {
                 if let Some(idx) = self.latest_req_idx_by_client.get(&client).copied() {
                     if let Some(flow) = self.flows.get_mut(idx) {
                         flow.status = Some(status);

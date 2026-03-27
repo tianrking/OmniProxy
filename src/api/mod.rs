@@ -17,11 +17,17 @@ pub struct ApiHub {
 #[serde(tag = "type")]
 pub enum ApiEvent {
     HttpRequest {
+        #[serde(default)]
+        request_id: Option<String>,
         client: String,
         method: String,
         uri: String,
+        #[serde(default)]
+        headers: Vec<(String, String)>,
     },
     HttpResponse {
+        #[serde(default)]
+        request_id: Option<String>,
         client: String,
         status: u16,
     },

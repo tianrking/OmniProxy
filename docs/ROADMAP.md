@@ -30,7 +30,8 @@ Estimated total: **10 major iterations** from current baseline.
 ### I4 (in progress)
 - Replay engine v1 (replay by flow id, method override, target override)
 - CLI commands for replay
-  - status: `omni-replay` list + replay-by-index 已落地，后续补 body/header 重放
+  - status: `omni-replay` list + replay-by-index + request-id replay + header override 已落地
+  - next: body capture/replay + richer flow correlation
 
 ### I5
 - Rule router v1 (host/path/method matching)

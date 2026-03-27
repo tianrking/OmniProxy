@@ -2,6 +2,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use omni_proxy::api::ApiEvent;
 use reqwest::Method;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -17,18 +18,26 @@ struct Cli {
     index: Option<usize>,
 
     #[arg(long)]
+    request_id: Option<String>,
+
+    #[arg(long)]
     method_override: Option<String>,
 
     #[arg(long)]
     url_override: Option<String>,
+
+    #[arg(long = "header")]
+    headers: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
 struct ReplayCandidate {
     index: usize,
+    request_id: Option<String>,
     client: String,
     method: String,
     uri: String,
+    headers: Vec<(String, String)>,
 }
 
 #[tokio::main]
@@ -40,19 +49,31 @@ async fn main() -> Result<()> {
     if cli.list {
         for req in &requests {
             println!(
-                "#{:04}  {:6}  {}  ({})",
-                req.index, req.method, req.uri, req.client
+                "#{:04}  {:6}  {}  ({})  req_id={}",
+                req.index,
+                req.method,
+                req.uri,
+                req.client,
+                req.request_id.as_deref().unwrap_or("-")
             );
         }
         return Ok(());
     }
 
-    let idx = cli.index.context("please pass --index N, or use --list")?;
-
-    let candidate = requests
-        .iter()
-        .find(|x| x.index == idx)
-        .with_context(|| format!("index {} not found", idx))?;
+    let candidate = if let Some(request_id) = &cli.request_id {
+        requests
+            .iter()
+            .find(|x| x.request_id.as_deref() == Some(request_id.as_str()))
+            .with_context(|| format!("request_id {} not found", request_id))?
+    } else {
+        let idx = cli
+            .index
+            .context("please pass --index N, --request-id, or use --list")?;
+        requests
+            .iter()
+            .find(|x| x.index == idx)
+            .with_context(|| format!("index {} not found", idx))?
+    };
 
     let method = cli
         .method_override
@@ -75,12 +96,22 @@ async fn main() -> Result<()> {
     let method = Method::from_bytes(method.as_bytes())
         .with_context(|| format!("invalid method: {}", method))?;
 
+    let headers = build_headers(&candidate.headers, &cli.headers)?;
+
     let client = reqwest::Client::builder().build()?;
-    let resp = client.request(method.clone(), &uri).send().await?;
+    let resp = client
+        .request(method.clone(), &uri)
+        .headers(headers)
+        .send()
+        .await?;
     let status = resp.status();
     let bytes = resp.bytes().await?;
 
-    println!("replayed index: {}", idx);
+    println!("replayed index: {}", candidate.index);
+    println!(
+        "replayed request_id: {}",
+        candidate.request_id.as_deref().unwrap_or("-")
+    );
     println!("request: {} {}", method, uri);
     println!("response status: {}", status);
     println!("response bytes: {}", bytes.len());
@@ -104,16 +135,20 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
         };
 
         if let ApiEvent::HttpRequest {
+            request_id,
             client,
             method,
             uri,
+            headers,
         } = event
         {
             out.push(ReplayCandidate {
                 index: i,
+                request_id,
                 client,
                 method,
                 uri,
+                headers,
             });
         }
     }
@@ -129,4 +164,48 @@ fn expand_home(path: PathBuf) -> PathBuf {
         }
     }
     path
+}
+
+fn build_headers(captured: &[(String, String)], overrides: &[String]) -> Result<HeaderMap> {
+    let mut map = HeaderMap::new();
+    for (k, v) in captured {
+        if is_hop_by_hop(k) {
+            continue;
+        }
+        let name = HeaderName::from_bytes(k.as_bytes())
+            .with_context(|| format!("invalid captured header name: {}", k))?;
+        let value = HeaderValue::from_str(v)
+            .with_context(|| format!("invalid captured header value: {}", k))?;
+        map.insert(name, value);
+    }
+
+    for item in overrides {
+        let (k, v) = item
+            .split_once(':')
+            .with_context(|| format!("invalid --header '{}', expected 'Key: Value'", item))?;
+        let name = HeaderName::from_bytes(k.trim().as_bytes())
+            .with_context(|| format!("invalid override header name: {}", k.trim()))?;
+        let value = HeaderValue::from_str(v.trim())
+            .with_context(|| format!("invalid override header value for {}", k.trim()))?;
+        map.insert(name, value);
+    }
+
+    Ok(map)
+}
+
+fn is_hop_by_hop(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "connection"
+            | "proxy-connection"
+            | "keep-alive"
+            | "transfer-encoding"
+            | "upgrade"
+            | "te"
+            | "trailer"
+            | "proxy-authenticate"
+            | "proxy-authorization"
+            | "host"
+            | "content-length"
+    )
 }
