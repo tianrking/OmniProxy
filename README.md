@@ -73,6 +73,12 @@ cargo run --bin omni-replay -- --request-id 4d3a... --header "Authorization: Bea
 cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
 ```
 
+8. Validate rules before starting proxy:
+
+```bash
+cargo run -- --check-rules
+```
+
 Rule file example:
 
 ```txt

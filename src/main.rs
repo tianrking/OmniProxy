@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use omni_proxy::config::Cli;
+use omni_proxy::rules::RuleEngine;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -16,7 +17,24 @@ async fn main() -> Result<()> {
         .compact()
         .init();
 
-    let app = omni_proxy::config::AppConfig::from_cli(cli)?;
+    let app = omni_proxy::config::AppConfig::from_cli(cli.clone())?;
+
+    if cli.check_rules {
+        let rules = RuleEngine::load(&app.rule_file_path)?;
+        let s = rules.stats();
+        println!(
+            "rule_file={}\nrule_count={}\ndeny={}\nreq_set_header={}\nres_set_header={}\nres_set_status={}\nres_replace_body={}",
+            app.rule_file_path.display(),
+            rules.count(),
+            s.deny_rules,
+            s.req_header_rules,
+            s.res_header_rules,
+            s.res_status_rules,
+            s.res_body_rules
+        );
+        return Ok(());
+    }
+
     info!(listen = %app.listen_addr, "starting OmniProxy core");
 
     omni_proxy::proxy::run(app).await

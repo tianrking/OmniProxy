@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::{net::SocketAddr, path::PathBuf};
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Clone, Parser)]
 #[command(name = "omni-proxy", version, about = "OmniProxy MITM core")]
 pub struct Cli {
     #[arg(long, env = "OMNI_LISTEN", default_value = "127.0.0.1:9090")]
@@ -31,6 +31,9 @@ pub struct Cli {
 
     #[arg(long, env = "OMNI_WASM_TIMEOUT_MS", default_value_t = 20_u64)]
     pub wasm_timeout_ms: u64,
+
+    #[arg(long, env = "OMNI_CHECK_RULES", default_value_t = false)]
+    pub check_rules: bool,
 }
 
 #[derive(Debug, Clone)]
