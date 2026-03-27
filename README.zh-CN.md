@@ -171,6 +171,9 @@ cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concur
 3. Filter Chain：可插拔策略链，统一扩展点。
 4. UX/API Shell：TUI 与 WebSocket API 解耦。
 
+API 合同文档：
+1. `docs/API_CONTRACT.md`
+
 ## 后续重点
 
 1. 回放 v2：请求体回放与结果 diff。

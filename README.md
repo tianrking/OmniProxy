@@ -192,4 +192,5 @@ Current TUI supports:
 ## Architecture
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+See [docs/API_CONTRACT.md](./docs/API_CONTRACT.md) for WS event contract.
 See [docs/ROADMAP.md](./docs/ROADMAP.md) for phased delivery and iteration estimates.

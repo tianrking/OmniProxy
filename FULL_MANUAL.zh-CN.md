@@ -194,3 +194,7 @@ websocat ws://127.0.0.1:9091
    1. 二进制产物
    2. `SHA256SUMS`
    3. `PROVENANCE.json`
+
+## 10. API 合同参考
+
+1. `docs/API_CONTRACT.md` 定义了后端 `HttpRequest` / `HttpResponse` / `WebSocketFrame` 事件结构。

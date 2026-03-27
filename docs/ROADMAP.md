@@ -97,6 +97,7 @@ Execution cadence:
   - Split panes with focus model
   - Search/filter history
   - Replay trigger from selected flow
+  - status: `docs/API_CONTRACT.md` 已落地，后端事件结构对外可直接对接
 - Exit criteria:
   - Full keyboard workflow from capture -> filter -> replay
 

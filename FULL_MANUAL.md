@@ -193,3 +193,7 @@ Event categories:
    1. binaries
    2. `SHA256SUMS`
    3. `PROVENANCE.json`
+
+## 10. API Contract Reference
+
+1. `docs/API_CONTRACT.md` defines the backend event schema for `HttpRequest` / `HttpResponse` / `WebSocketFrame`.
