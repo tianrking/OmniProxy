@@ -29,6 +29,9 @@ jobs:
       - name: Cargo test
         run: cargo test --all-targets --all-features
 
+      - name: Rule preflight check
+        run: cargo run --bin omni_proxy -- --check-rules --rule-file ./examples/rules-ci.txt
+
   build-linux:
     name: build (${{ matrix.target }})
     runs-on: ubuntu-latest
@@ -100,15 +103,13 @@ jobs:
 
   build-macos:
     name: build (${{ matrix.target }})
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: macos-13
-            target: x86_64-apple-darwin
-          - runner: macos-14
-            target: aarch64-apple-darwin
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
     steps:
       - name: Checkout
         uses: actions/checkout@v4

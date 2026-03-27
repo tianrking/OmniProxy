@@ -1,0 +1,6 @@
+# CI fixture rules for OmniProxy parser and policy preflight.
+deny req.method == "TRACE"
+req.set_header X-Omni-Test: ci if req.host ~= "example.com"
+res.set_header X-Omni-Test: hit if res.status >= 400
+res.set_status 451 if req.uri ~= "/blocked"
+res.replace_body "blocked in ci fixture" if req.uri ~= "/blocked"

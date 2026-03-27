@@ -192,6 +192,7 @@ impl HttpFilter for WasmFilter {
 pub struct RuleFilter {
     rules: Arc<RuleEngine>,
     inflight_req_meta: Arc<Mutex<HashMap<String, VecDeque<RequestMeta>>>>,
+    inflight_req_meta_by_id: Arc<Mutex<HashMap<String, RequestMeta>>>,
 }
 
 impl RuleFilter {
@@ -199,6 +200,7 @@ impl RuleFilter {
         Self {
             rules,
             inflight_req_meta: Arc::new(Mutex::new(HashMap::new())),
+            inflight_req_meta_by_id: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -218,6 +220,17 @@ impl RuleFilter {
             guard.remove(client);
         }
         val
+    }
+
+    fn put_meta_by_req_id(&self, req_id: &str, meta: RequestMeta) {
+        if let Ok(mut m) = self.inflight_req_meta_by_id.lock() {
+            m.insert(req_id.to_string(), meta);
+        }
+    }
+
+    fn take_meta_by_req_id(&self, req_id: &str) -> Option<RequestMeta> {
+        let mut guard = self.inflight_req_meta_by_id.lock().ok()?;
+        guard.remove(req_id)
     }
 }
 
@@ -249,6 +262,13 @@ impl HttpFilter for RuleFilter {
             }
         }
 
+        if let Some(req_id) = req
+            .headers()
+            .get("x-omni-request-id")
+            .and_then(|v| v.to_str().ok())
+        {
+            self.put_meta_by_req_id(req_id, meta.clone());
+        }
         self.push_meta(&ctx.client_addr.to_string(), meta);
         Ok(req.into())
     }
@@ -264,7 +284,16 @@ impl HttpFilter for RuleFilter {
             uri: String::new(),
             host: String::new(),
         };
-        let meta = self.pop_meta(&client).unwrap_or(fallback_meta);
+        let req_id = res
+            .headers()
+            .get("x-omni-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(ToOwned::to_owned);
+        let meta = req_id
+            .as_deref()
+            .and_then(|id| self.take_meta_by_req_id(id))
+            .or_else(|| self.pop_meta(&client))
+            .unwrap_or(fallback_meta);
         let outcome = self.rules.eval_response(&meta, res.status().as_u16());
         for (k, v) in outcome.add_headers {
             if let (Ok(name), Ok(value)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {

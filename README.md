@@ -2,6 +2,8 @@
 
 OmniProxy is a modern MITM proxy core for API debugging and security analysis.
 
+中文文档: `docs/README.zh-CN.md`
+
 Cross-platform target:
 
 - Linux (`amd64`, `arm64`, `arm32`)
@@ -76,7 +78,8 @@ cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
 8. Validate rules before starting proxy:
 
 ```bash
-cargo run -- --check-rules
+cargo run --bin omni_proxy -- --check-rules
+cargo run --bin omni_proxy -- --check-rules --rule-file ./examples/rules-ci.txt
 ```
 
 Rule file example:
