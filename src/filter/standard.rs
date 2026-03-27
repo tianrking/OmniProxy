@@ -204,7 +204,10 @@ impl HttpFilter for RuleFilter {
         _ctx: &HttpContext,
         req: Request<Body>,
     ) -> Result<RequestOrResponse> {
-        if self.rules.should_deny(req.method().as_str(), None) {
+        let method = req.method().as_str().to_string();
+        let uri = req.uri().to_string();
+        let host = extract_host(&req);
+        if self.rules.should_deny_request(&method, &uri, &host) {
             let denied = Response::builder()
                 .status(403)
                 .header("content-type", "text/plain; charset=utf-8")
@@ -214,4 +217,15 @@ impl HttpFilter for RuleFilter {
         }
         Ok(req.into())
     }
+}
+
+fn extract_host(req: &Request<Body>) -> String {
+    if let Some(host) = req.uri().host() {
+        return host.to_string();
+    }
+    req.headers()
+        .get("host")
+        .and_then(|v| v.to_str().ok())
+        .map(ToOwned::to_owned)
+        .unwrap_or_default()
 }

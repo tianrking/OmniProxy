@@ -37,7 +37,7 @@ Estimated total: **10 major iterations** from current baseline.
 ### I5
 - Rule router v1 (host/path/method matching)
 - Request/response mutation actions (headers/status/body-lite)
-  - status: method-based deny rule engine 已提前落地（rules.txt + DSL）
+  - status: method + host + uri deny rule engine 已落地（rules.txt + DSL）
 
 ### I6
 - Wasm ABI v1 (mutating hooks + deny/allow actions)

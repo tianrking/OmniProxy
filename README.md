@@ -15,6 +15,8 @@ Rules engine:
 - default file: `~/.omni-proxy/rules.txt`
 - expression syntax follows built-in DSL (e.g. `req.method == "TRACE"`)
 - each non-empty non-comment line (`#`) is a deny rule
+- supported request fields now include `req.method`, `req.host`, `req.uri`
+- string contains operator: `~=`
 
 Current phase (core-first, no UI):
 
@@ -71,6 +73,9 @@ Rule file example:
 # Block dangerous methods
 req.method == "TRACE"
 req.method == "CONNECT"
+# Block specific target host/path
+req.host ~= "internal.example.com"
+req.uri ~= "/admin"
 ```
 
 ## Plugin Directory

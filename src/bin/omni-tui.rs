@@ -324,6 +324,7 @@ impl App {
         let ctx = EvalContext {
             req_method: flow.method.clone(),
             res_status: flow.status,
+            ..EvalContext::default()
         };
         expr.eval(&ctx)
     }

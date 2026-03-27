@@ -24,10 +24,12 @@ impl RuleEngine {
         Ok(Self { deny_rules })
     }
 
-    pub fn should_deny(&self, method: &str, status: Option<u16>) -> bool {
+    pub fn should_deny_request(&self, method: &str, uri: &str, host: &str) -> bool {
         let ctx = EvalContext {
             req_method: Some(method.to_string()),
-            res_status: status,
+            req_uri: Some(uri.to_string()),
+            req_host: Some(host.to_string()),
+            res_status: None,
         };
         self.deny_rules.iter().any(|expr| expr.eval(&ctx))
     }

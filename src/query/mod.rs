@@ -12,12 +12,15 @@ pub enum Expr {
 #[derive(Debug, Clone, Copy)]
 pub enum Field {
     ReqMethod,
+    ReqUri,
+    ReqHost,
     ResStatus,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum Op {
     Eq,
+    Contains,
     Gte,
     Lte,
 }
@@ -31,6 +34,8 @@ pub enum Value {
 #[derive(Debug, Clone, Default)]
 pub struct EvalContext {
     pub req_method: Option<String>,
+    pub req_uri: Option<String>,
+    pub req_host: Option<String>,
     pub res_status: Option<u16>,
 }
 
@@ -43,6 +48,20 @@ impl Expr {
                 (Field::ReqMethod, Op::Eq, Value::Str(s)) => {
                     ctx.req_method.as_ref().map(|m| m == s).unwrap_or(false)
                 }
+                (Field::ReqUri, Op::Eq, Value::Str(s)) => {
+                    ctx.req_uri.as_ref().map(|u| u == s).unwrap_or(false)
+                }
+                (Field::ReqUri, Op::Contains, Value::Str(s)) => {
+                    ctx.req_uri.as_ref().map(|u| u.contains(s)).unwrap_or(false)
+                }
+                (Field::ReqHost, Op::Eq, Value::Str(s)) => {
+                    ctx.req_host.as_ref().map(|h| h == s).unwrap_or(false)
+                }
+                (Field::ReqHost, Op::Contains, Value::Str(s)) => ctx
+                    .req_host
+                    .as_ref()
+                    .map(|h| h.contains(s))
+                    .unwrap_or(false),
                 (Field::ResStatus, Op::Eq, Value::Int(i)) => {
                     ctx.res_status.map(|x| x as i64 == *i).unwrap_or(false)
                 }
@@ -77,6 +96,8 @@ pub fn parse(input: &str) -> Result<Expr> {
 fn parse_cmp(input: &str) -> Result<Expr> {
     let (op, parts) = if let Some(parts) = input.split_once("==") {
         (Op::Eq, parts)
+    } else if let Some(parts) = input.split_once("~=") {
+        (Op::Contains, parts)
     } else if let Some(parts) = input.split_once(">=") {
         (Op::Gte, parts)
     } else if let Some(parts) = input.split_once("<=") {
@@ -87,13 +108,15 @@ fn parse_cmp(input: &str) -> Result<Expr> {
 
     let field = match parts.0.trim() {
         "req.method" => Field::ReqMethod,
+        "req.uri" => Field::ReqUri,
+        "req.host" => Field::ReqHost,
         "res.status" => Field::ResStatus,
         x => bail!("unsupported field: {x}"),
     };
 
     let raw = parts.1.trim();
     let value = match field {
-        Field::ReqMethod => {
+        Field::ReqMethod | Field::ReqUri | Field::ReqHost => {
             let v = raw.trim_matches('"').to_string();
             Value::Str(v)
         }
@@ -133,6 +156,17 @@ mod tests {
         let ctx = EvalContext {
             req_method: Some("POST".into()),
             res_status: Some(500),
+            ..EvalContext::default()
+        };
+        assert!(expr.eval(&ctx));
+    }
+
+    #[test]
+    fn test_host_contains() {
+        let expr = parse(r#"req.host ~= "example.com""#).expect("parse");
+        let ctx = EvalContext {
+            req_host: Some("api.example.com".into()),
+            ..EvalContext::default()
         };
         assert!(expr.eval(&ctx));
     }
