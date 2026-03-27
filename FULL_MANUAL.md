@@ -58,6 +58,10 @@ cargo run --release -- --listen 127.0.0.1:9090
 5. `--flow-log-rotate-bytes`: rotation threshold.
 6. `--flow-log-max-files`: retained rotated files count.
 
+Streaming capture behavior:
+1. Unknown-length bodies are forwarded as stream and are not buffered.
+2. Event field `body_capture_reason` explains why body is omitted/truncated.
+
 ### 3.6 WebSocket Mutation and Observability
 
 1. `--ws-preview-bytes`: text preview truncation size.

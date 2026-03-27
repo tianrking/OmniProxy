@@ -33,7 +33,8 @@ Every event is a JSON object with a `type` discriminator.
   "headers": [["host", "example.com"]],
   "body_b64": "optional-base64",
   "body_truncated": false,
-  "body_size": 123
+  "body_size": 123,
+  "body_capture_reason": "optional-string"
 }
 ```
 
@@ -41,6 +42,11 @@ Field semantics:
 1. `request_id`: correlation key injected by OmniProxy (`x-omni-request-id`).
 2. `body_b64`: present when body capture policy allows it.
 3. `body_truncated`: true when omitted due size/compression/policy.
+4. `body_capture_reason` possible values:
+   1. `sampled_out`
+   2. `compressed_skipped`
+   3. `unknown_length_streaming`
+   4. `over_limit`
 
 ## HttpResponse
 
@@ -54,7 +60,8 @@ Field semantics:
   "headers": [["content-type", "application/json"]],
   "body_b64": "optional-base64",
   "body_truncated": false,
-  "body_size": 456
+  "body_size": 456,
+  "body_capture_reason": "optional-string"
 }
 ```
 

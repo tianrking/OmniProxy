@@ -58,6 +58,10 @@ cargo run --release -- --listen 127.0.0.1:9090
 5. `--flow-log-rotate-bytes`：滚动阈值。
 6. `--flow-log-max-files`：滚动保留数量。
 
+流式捕获策略：
+1. 未知长度 body 采用流式透传，不做整体缓冲。
+2. 事件字段 `body_capture_reason` 会标记未捕获/截断原因。
+
 ### 3.6 WebSocket 篡改与观测
 
 1. `--ws-preview-bytes`：文本预览截断长度。

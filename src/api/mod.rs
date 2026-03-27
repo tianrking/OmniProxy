@@ -32,6 +32,8 @@ pub enum ApiEvent {
         body_truncated: bool,
         #[serde(default)]
         body_size: Option<usize>,
+        #[serde(default)]
+        body_capture_reason: Option<String>,
     },
     HttpResponse {
         #[serde(default)]
@@ -48,6 +50,8 @@ pub enum ApiEvent {
         body_truncated: bool,
         #[serde(default)]
         body_size: Option<usize>,
+        #[serde(default)]
+        body_capture_reason: Option<String>,
     },
     WebSocketFrame {
         #[serde(default)]

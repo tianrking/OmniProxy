@@ -130,6 +130,7 @@ impl HttpFilter for AccessLogFilter {
                 body_b64: req_body.body_b64,
                 body_truncated: req_body.body_truncated,
                 body_size: req_body.body_size,
+                body_capture_reason: req_body.body_capture_reason,
             });
         }
         info!(
@@ -188,6 +189,7 @@ impl HttpFilter for AccessLogFilter {
                 body_b64: res_body.body_b64,
                 body_truncated: res_body.body_truncated,
                 body_size: res_body.body_size,
+                body_capture_reason: res_body.body_capture_reason,
             });
         }
         info!(
@@ -502,6 +504,7 @@ struct CapturedBody {
     body_b64: Option<String>,
     body_truncated: bool,
     body_size: Option<usize>,
+    body_capture_reason: Option<String>,
 }
 
 async fn capture_request_body(
@@ -512,7 +515,16 @@ async fn capture_request_body(
 ) -> Result<(Request<Body>, CapturedBody)> {
     let (parts, body) = req.into_parts();
     if !should_capture {
-        return Ok((Request::from_parts(parts, body), CapturedBody::default()));
+        let body_size = content_length(parts.headers.get("content-length"));
+        return Ok((
+            Request::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size,
+                body_capture_reason: Some("sampled_out".into()),
+            },
+        ));
     }
     if !capture_compressed && is_compressed(parts.headers.get("content-encoding")) {
         let body_size = content_length(parts.headers.get("content-length"));
@@ -522,11 +534,21 @@ async fn capture_request_body(
                 body_b64: None,
                 body_truncated: true,
                 body_size,
+                body_capture_reason: Some("compressed_skipped".into()),
             },
         ));
     }
     let Some(content_len) = content_length(parts.headers.get("content-length")) else {
-        return Ok((Request::from_parts(parts, body), CapturedBody::default()));
+        // Unknown-length / streaming body: preserve stream, never buffer.
+        return Ok((
+            Request::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size: None,
+                body_capture_reason: Some("unknown_length_streaming".into()),
+            },
+        ));
     };
     if max_bytes == 0 || content_len > max_bytes {
         return Ok((
@@ -535,6 +557,7 @@ async fn capture_request_body(
                 body_b64: None,
                 body_truncated: true,
                 body_size: Some(content_len),
+                body_capture_reason: Some("over_limit".into()),
             },
         ));
     }
@@ -551,6 +574,7 @@ async fn capture_request_body(
             body_b64: encoded,
             body_truncated: false,
             body_size: Some(content_len),
+            body_capture_reason: None,
         },
     ))
 }
@@ -563,7 +587,16 @@ async fn capture_response_body(
 ) -> Result<(Response<Body>, CapturedBody)> {
     let (parts, body) = res.into_parts();
     if !should_capture {
-        return Ok((Response::from_parts(parts, body), CapturedBody::default()));
+        let body_size = content_length(parts.headers.get("content-length"));
+        return Ok((
+            Response::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size,
+                body_capture_reason: Some("sampled_out".into()),
+            },
+        ));
     }
     if !capture_compressed && is_compressed(parts.headers.get("content-encoding")) {
         let body_size = content_length(parts.headers.get("content-length"));
@@ -573,11 +606,20 @@ async fn capture_response_body(
                 body_b64: None,
                 body_truncated: true,
                 body_size,
+                body_capture_reason: Some("compressed_skipped".into()),
             },
         ));
     }
     let Some(content_len) = content_length(parts.headers.get("content-length")) else {
-        return Ok((Response::from_parts(parts, body), CapturedBody::default()));
+        return Ok((
+            Response::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size: None,
+                body_capture_reason: Some("unknown_length_streaming".into()),
+            },
+        ));
     };
     if max_bytes == 0 || content_len > max_bytes {
         return Ok((
@@ -586,6 +628,7 @@ async fn capture_response_body(
                 body_b64: None,
                 body_truncated: true,
                 body_size: Some(content_len),
+                body_capture_reason: Some("over_limit".into()),
             },
         ));
     }
@@ -602,6 +645,7 @@ async fn capture_response_body(
             body_b64: encoded,
             body_truncated: false,
             body_size: Some(content_len),
+            body_capture_reason: None,
         },
     ))
 }

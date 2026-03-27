@@ -33,7 +33,7 @@ Status legend:
 5. WebSocket transparent interception: `DONE`
 6. WebSocket frame-level observability (text/binary/ping/pong/close): `DONE`
 7. WebSocket frame mutation pipeline: `DONE`
-8. Large payload streaming with bounded memory strategy: `TODO`
+8. Large payload streaming with bounded memory strategy: `IN_PROGRESS`
 9. Backpressure policy for slow downstream sinks: `IN_PROGRESS`
 10. Deterministic request/response correlation under concurrency: `IN_PROGRESS`
 
