@@ -35,6 +35,8 @@ cargo run --release -- --listen 127.0.0.1:9090
 2. `--api-listen` / `OMNI_API_LISTEN`: backend WS API address.
 3. `--api-max-lag` / `OMNI_API_MAX_LAG`: close lagging API clients after accumulated dropped events exceed the threshold.
 4. `--log-level` / `OMNI_LOG`: log level.
+5. `--wasm-timeout-ms` / `OMNI_WASM_TIMEOUT_MS`: per-evaluation timeout budget.
+6. `--wasm-max-failures` / `OMNI_WASM_MAX_FAILURES`: per-plugin failure budget before auto-skip.
 
 ### 3.3 CA and Bootstrap
 

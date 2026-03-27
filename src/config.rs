@@ -35,6 +35,9 @@ pub struct Cli {
     #[arg(long, env = "OMNI_WASM_TIMEOUT_MS", default_value_t = 20_u64)]
     pub wasm_timeout_ms: u64,
 
+    #[arg(long, env = "OMNI_WASM_MAX_FAILURES", default_value_t = 100_u64)]
+    pub wasm_max_failures: u64,
+
     #[arg(long, env = "OMNI_CHECK_RULES", default_value_t = false)]
     pub check_rules: bool,
 
@@ -88,6 +91,7 @@ pub struct AppConfig {
     pub rule_file_path: PathBuf,
     pub flow_log_path: PathBuf,
     pub wasm_timeout_ms: u64,
+    pub wasm_max_failures: u64,
     pub ws_preview_bytes: usize,
     pub ws_drop_ping: bool,
     pub ws_text_rewrite: Vec<(String, String)>,
@@ -119,6 +123,7 @@ impl AppConfig {
             rule_file_path: expand_home(cli.rule_file),
             flow_log_path: expand_home(cli.flow_log),
             wasm_timeout_ms: cli.wasm_timeout_ms,
+            wasm_max_failures: cli.wasm_max_failures.max(1),
             ws_preview_bytes: cli.ws_preview_bytes,
             ws_drop_ping: cli.ws_drop_ping,
             ws_text_rewrite: parse_rewrite_rules(&cli.ws_text_rewrite)?,

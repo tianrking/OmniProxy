@@ -115,6 +115,7 @@ pub async fn run(config: AppConfig) -> Result<()> {
     let wasm_host = Arc::new(WasmPluginHost::load(
         &config.plugin_dir,
         config.wasm_timeout_ms,
+        config.wasm_max_failures,
     )?);
     let rules = Arc::new(RuleEngine::load(&config.rule_file_path)?);
     let rs = rules.stats();

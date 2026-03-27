@@ -1,7 +1,14 @@
 use anyhow::{Context, Result};
 use hudsucker::{Body, hyper::Request, hyper::Response};
 use serde::Serialize;
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::Path,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 use tokio::time::{Duration, timeout};
 use tracing::{debug, info, warn};
 use wasmtime::{Engine, Instance, Memory, Module, Store, TypedFunc};
@@ -11,12 +18,14 @@ pub struct WasmPluginHost {
     engine: Engine,
     plugins: Vec<WasmPlugin>,
     timeout_ms: u64,
+    max_failures: u64,
 }
 
 #[derive(Clone)]
 struct WasmPlugin {
     name: String,
     module: Module,
+    failures: Arc<AtomicU64>,
 }
 
 #[derive(Serialize)]
@@ -33,7 +42,7 @@ struct ResponseSnapshot {
 }
 
 impl WasmPluginHost {
-    pub fn load(plugin_dir: &Path, timeout_ms: u64) -> Result<Self> {
+    pub fn load(plugin_dir: &Path, timeout_ms: u64, max_failures: u64) -> Result<Self> {
         if !plugin_dir.exists() {
             std::fs::create_dir_all(plugin_dir)
                 .with_context(|| format!("create plugin dir {}", plugin_dir.display()))?;
@@ -59,7 +68,11 @@ impl WasmPluginHost {
                         .unwrap_or("unnamed")
                         .to_string();
                     info!(plugin = %name, path = %path.display(), "loaded wasm plugin");
-                    plugins.push(WasmPlugin { name, module });
+                    plugins.push(WasmPlugin {
+                        name,
+                        module,
+                        failures: Arc::new(AtomicU64::new(0)),
+                    });
                 }
                 Err(err) => {
                     warn!(path = %path.display(), error = %err, "skip invalid wasm plugin");
@@ -71,6 +84,7 @@ impl WasmPluginHost {
             engine,
             plugins,
             timeout_ms,
+            max_failures,
         })
     }
 
@@ -110,8 +124,27 @@ impl WasmPluginHost {
 
     fn broadcast(&self, hook: &str, payload: &[u8]) -> Result<()> {
         for plugin in &self.plugins {
-            self.invoke_hook(plugin, hook, payload)
-                .with_context(|| format!("plugin {}", plugin.name))?;
+            let failures = plugin.failures.load(Ordering::Relaxed);
+            if failures >= self.max_failures {
+                debug!(
+                    plugin = %plugin.name,
+                    failures,
+                    max_failures = self.max_failures,
+                    "plugin disabled by failure budget"
+                );
+                continue;
+            }
+            if let Err(err) = self.invoke_hook(plugin, hook, payload) {
+                let n = plugin.failures.fetch_add(1, Ordering::Relaxed) + 1;
+                warn!(
+                    plugin = %plugin.name,
+                    hook,
+                    failures = n,
+                    max_failures = self.max_failures,
+                    error = %err,
+                    "plugin hook failed"
+                );
+            }
         }
         Ok(())
     }

@@ -172,6 +172,7 @@ Return `0` for success; non-zero values are logged as warnings.
 Wasm execution is isolated and fail-open:
 
 - plugin timeout: `--wasm-timeout-ms` (default `20`)
+- plugin failure budget: `--wasm-max-failures` (default `100`, plugin is skipped after threshold)
 - timeout/trap/plugin error will be logged, but proxy core keeps running
 
 ## Filter Query DSL (Core)

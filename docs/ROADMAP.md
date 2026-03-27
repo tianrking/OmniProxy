@@ -89,6 +89,7 @@ Execution cadence:
   - Per-plugin timeout
   - CPU/memory/failure budget
   - Panic/fault isolation metrics
+  - status: 插件 failure budget 已接入（`--wasm-max-failures`）
 - Exit criteria:
   - Plugin timeout/fault does not block core forwarding path
 

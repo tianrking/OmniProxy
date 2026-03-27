@@ -35,6 +35,8 @@ cargo run --release -- --listen 127.0.0.1:9090
 2. `--api-listen` / `OMNI_API_LISTEN`：后端事件 API 地址。
 3. `--api-max-lag` / `OMNI_API_MAX_LAG`：慢消费客户端累计掉包超过阈值后自动断开。
 4. `--log-level` / `OMNI_LOG`：日志级别。
+5. `--wasm-timeout-ms` / `OMNI_WASM_TIMEOUT_MS`：Wasm 执行超时预算。
+6. `--wasm-max-failures` / `OMNI_WASM_MAX_FAILURES`：插件失败预算，超过阈值后自动跳过。
 
 ### 3.3 CA 与初始化
 
