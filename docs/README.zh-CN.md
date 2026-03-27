@@ -92,6 +92,11 @@ cargo run -- --ws-text-rewrite "foo=>bar" --ws-text-rewrite "token=>[REDACTED]"
 4. `res.set_status <code> if <expr>`
 5. `res.replace_body "text" if <expr>`
 
+表达式新增前后缀匹配：
+
+1. `req.uri starts_with "/api/"`
+2. `req.host ends_with ".internal"`
+
 示例：
 
 ```txt

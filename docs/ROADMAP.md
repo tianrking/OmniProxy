@@ -67,6 +67,7 @@ Execution cadence:
   - More expressive DSL (`starts_with`, `ends_with`, regex-lite)
   - Action precedence and conflict policy
   - Rule lint/check subcommand
+  - status: `starts_with` / `ends_with` 已接入 DSL
 - Exit criteria:
   - `omni_proxy --check-rules` validates files and prints actionable diagnostics
 

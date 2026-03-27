@@ -21,6 +21,8 @@ pub enum Field {
 pub enum Op {
     Eq,
     Contains,
+    StartsWith,
+    EndsWith,
     Gte,
     Lte,
 }
@@ -54,6 +56,16 @@ impl Expr {
                 (Field::ReqUri, Op::Contains, Value::Str(s)) => {
                     ctx.req_uri.as_ref().map(|u| u.contains(s)).unwrap_or(false)
                 }
+                (Field::ReqUri, Op::StartsWith, Value::Str(s)) => ctx
+                    .req_uri
+                    .as_ref()
+                    .map(|u| u.starts_with(s))
+                    .unwrap_or(false),
+                (Field::ReqUri, Op::EndsWith, Value::Str(s)) => ctx
+                    .req_uri
+                    .as_ref()
+                    .map(|u| u.ends_with(s))
+                    .unwrap_or(false),
                 (Field::ReqHost, Op::Eq, Value::Str(s)) => {
                     ctx.req_host.as_ref().map(|h| h == s).unwrap_or(false)
                 }
@@ -61,6 +73,26 @@ impl Expr {
                     .req_host
                     .as_ref()
                     .map(|h| h.contains(s))
+                    .unwrap_or(false),
+                (Field::ReqHost, Op::StartsWith, Value::Str(s)) => ctx
+                    .req_host
+                    .as_ref()
+                    .map(|h| h.starts_with(s))
+                    .unwrap_or(false),
+                (Field::ReqHost, Op::EndsWith, Value::Str(s)) => ctx
+                    .req_host
+                    .as_ref()
+                    .map(|h| h.ends_with(s))
+                    .unwrap_or(false),
+                (Field::ReqMethod, Op::StartsWith, Value::Str(s)) => ctx
+                    .req_method
+                    .as_ref()
+                    .map(|m| m.starts_with(s))
+                    .unwrap_or(false),
+                (Field::ReqMethod, Op::EndsWith, Value::Str(s)) => ctx
+                    .req_method
+                    .as_ref()
+                    .map(|m| m.ends_with(s))
                     .unwrap_or(false),
                 (Field::ResStatus, Op::Eq, Value::Int(i)) => {
                     ctx.res_status.map(|x| x as i64 == *i).unwrap_or(false)
@@ -94,7 +126,11 @@ pub fn parse(input: &str) -> Result<Expr> {
 }
 
 fn parse_cmp(input: &str) -> Result<Expr> {
-    let (op, parts) = if let Some(parts) = input.split_once("==") {
+    let (op, parts) = if let Some(parts) = input.split_once(" starts_with ") {
+        (Op::StartsWith, parts)
+    } else if let Some(parts) = input.split_once(" ends_with ") {
+        (Op::EndsWith, parts)
+    } else if let Some(parts) = input.split_once("==") {
         (Op::Eq, parts)
     } else if let Some(parts) = input.split_once("~=") {
         (Op::Contains, parts)
@@ -166,6 +202,18 @@ mod tests {
         let expr = parse(r#"req.host ~= "example.com""#).expect("parse");
         let ctx = EvalContext {
             req_host: Some("api.example.com".into()),
+            ..EvalContext::default()
+        };
+        assert!(expr.eval(&ctx));
+    }
+
+    #[test]
+    fn test_starts_with_and_ends_with() {
+        let expr = parse(r#"req.uri starts_with "/api/" && req.host ends_with ".example.com""#)
+            .expect("parse");
+        let ctx = EvalContext {
+            req_uri: Some("/api/v1/items".into()),
+            req_host: Some("svc.example.com".into()),
             ..EvalContext::default()
         };
         assert!(expr.eval(&ctx));

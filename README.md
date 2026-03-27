@@ -22,6 +22,7 @@ Rules engine:
 - each non-empty non-comment line (`#`) is a deny rule
 - supported request fields now include `req.method`, `req.host`, `req.uri`
 - string contains operator: `~=`
+- string prefix/suffix operators: `starts_with`, `ends_with`
 - action syntax:
   - `deny <expr>`
   - `req.set_header Header: Value if <expr>`
