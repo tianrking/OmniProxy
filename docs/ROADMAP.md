@@ -81,6 +81,7 @@ Execution cadence:
   - Mutating request/response hooks
   - Structured hostcalls (log, kv, metrics, reject)
   - ABI versioning contract
+  - status: `on_http_request_mut` / `on_http_response_mut` 可变更 ABI 已接入主链路
 - Exit criteria:
   - One sample plugin can modify request and response safely
 

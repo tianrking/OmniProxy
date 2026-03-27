@@ -73,7 +73,7 @@ Status legend:
 1. Plugin discovery and loading: `DONE`
 2. Isolated execution and timeout: `DONE`
 3. Fail-open behavior: `DONE`
-4. Stable mutating ABI v1 (req/res edit actions): `TODO`
+4. Stable mutating ABI v1 (req/res edit actions): `IN_PROGRESS`
 5. Resource budgets (CPU/memory/fault counters): `IN_PROGRESS`
 6. Versioned ABI compatibility tests: `TODO`
 

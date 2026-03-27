@@ -201,3 +201,27 @@ websocat ws://127.0.0.1:9091
 ## 10. API 合同参考
 
 1. `docs/API_CONTRACT.md` 定义了后端 `HttpRequest` / `HttpResponse` / `WebSocketFrame` 事件结构。
+
+## 11. Wasm 可变更 ABI（v1 基线）
+
+可选导出：
+1. `on_http_request_mut(i32, i32) -> i64`
+2. `on_http_response_mut(i32, i32) -> i64`
+
+输入：
+1. Host 将输入 JSON 写入 wasm 内存并传入 `(ptr, len)`。
+
+输出：
+1. 返回 `0` 表示无修改。
+2. 非零 `i64` 采用 `(ptr << 32) | len` 打包。
+3. 输出内容必须是 UTF-8 JSON。
+
+请求修改 JSON：
+```json
+{"add_headers":[["x-plugin","on"]]}
+```
+
+响应修改 JSON：
+```json
+{"add_headers":[["x-plugin","on"]],"set_status":418,"replace_body":"rewritten by wasm"}
+```

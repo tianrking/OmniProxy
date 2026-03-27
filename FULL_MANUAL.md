@@ -200,3 +200,27 @@ Event categories:
 ## 10. API Contract Reference
 
 1. `docs/API_CONTRACT.md` defines the backend event schema for `HttpRequest` / `HttpResponse` / `WebSocketFrame`.
+
+## 11. Wasm Mutating ABI (v1 baseline)
+
+Optional exports:
+1. `on_http_request_mut(i32, i32) -> i64`
+2. `on_http_response_mut(i32, i32) -> i64`
+
+Input:
+1. Host allocates input JSON buffer in wasm memory and passes `(ptr, len)`.
+
+Output:
+1. Return `0` for no mutation.
+2. Return packed `i64` where high 32 bits are `ptr`, low 32 bits are `len`.
+3. Output bytes must be UTF-8 JSON.
+
+Request mutation JSON:
+```json
+{"add_headers":[["x-plugin","on"]]}
+```
+
+Response mutation JSON:
+```json
+{"add_headers":[["x-plugin","on"]],"set_status":418,"replace_body":"rewritten by wasm"}
+```

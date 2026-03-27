@@ -165,9 +165,18 @@ Current ABI (v0):
 - export dealloc: `dealloc(i32, i32) -> ()`
 - optional hook: `on_http_request(i32, i32) -> i32`
 - optional hook: `on_http_response(i32, i32) -> i32`
+- optional mutating hook: `on_http_request_mut(i32, i32) -> i64`
+- optional mutating hook: `on_http_response_mut(i32, i32) -> i64`
 
 The two hook functions receive a UTF-8 JSON payload pointer/length.
 Return `0` for success; non-zero values are logged as warnings.
+
+Mutating ABI (`*_mut`) return value:
+- `0` means no mutation.
+- non-zero packs output `(ptr, len)` into `i64`: `(ptr << 32) | len`.
+- output bytes must be UTF-8 JSON:
+  - request: `{"add_headers":[["x-k","v"]]}`
+  - response: `{"add_headers":[["x-k","v"]],"set_status":418,"replace_body":"rewritten"}`
 
 Wasm execution is isolated and fail-open:
 

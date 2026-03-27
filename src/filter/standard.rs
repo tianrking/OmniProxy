@@ -1,7 +1,7 @@
 use super::{HttpFilter, WebSocketFilter};
 use crate::{
     api::{ApiEvent, ApiHub, now_ms},
-    plugins::WasmPluginHost,
+    plugins::{ResponseMutation, WasmPluginHost},
     rules::{RequestMeta, RuleEngine},
 };
 use anyhow::Result;
@@ -215,18 +215,51 @@ impl HttpFilter for WasmFilter {
     async fn on_request(
         &self,
         _ctx: &HttpContext,
-        req: Request<Body>,
+        mut req: Request<Body>,
     ) -> Result<RequestOrResponse> {
         if let Err(err) = self.host.eval_request_isolated(&req).await {
             // Fail-open: plugin faults must never crash or block the proxy core.
             warn!(error = %err, "wasm request hook failed");
         }
+        if let Ok(mutations) = self.host.eval_request_mutations(&req).await {
+            for (k, v) in mutations.add_headers {
+                if let (Ok(name), Ok(value)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {
+                    req.headers_mut().insert(name, value);
+                }
+            }
+        }
         Ok(req.into())
     }
 
-    async fn on_response(&self, _ctx: &HttpContext, res: Response<Body>) -> Result<Response<Body>> {
+    async fn on_response(
+        &self,
+        _ctx: &HttpContext,
+        mut res: Response<Body>,
+    ) -> Result<Response<Body>> {
         if let Err(err) = self.host.eval_response_isolated(&res).await {
             warn!(error = %err, "wasm response hook failed");
+        }
+        let ResponseMutation {
+            add_headers,
+            set_status,
+            replace_body,
+        } = self
+            .host
+            .eval_response_mutations(&res)
+            .await
+            .unwrap_or_default();
+        for (k, v) in add_headers {
+            if let (Ok(name), Ok(value)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {
+                res.headers_mut().insert(name, value);
+            }
+        }
+        if let Some(code) = set_status {
+            if let Ok(status) = StatusCode::from_u16(code) {
+                *res.status_mut() = status;
+            }
+        }
+        if let Some(body) = replace_body {
+            *res.body_mut() = Body::from(body);
         }
         Ok(res)
     }
