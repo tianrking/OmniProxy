@@ -131,6 +131,12 @@ CA 证书诊断（不启动代理）：
 cargo run --bin omni_proxy -- --diagnose-ca
 ```
 
+快速压测工具：
+
+```bash
+cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concurrency 128 --proxy http://127.0.0.1:9090
+```
+
 ## CI 与跨平台
 
 当前 CI 覆盖：

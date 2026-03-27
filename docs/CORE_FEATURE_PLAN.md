@@ -93,7 +93,7 @@ Status legend:
 3. CI: macOS x64/arm64 build: `DONE`
 4. CI: `.deb` packaging: `DONE`
 5. CI: fmt/check/test + rules preflight gate: `DONE`
-6. Performance benchmark suite (latency/memory/concurrency): `TODO`
+6. Performance benchmark suite (latency/memory/concurrency): `IN_PROGRESS`
 7. Signed release artifacts and provenance: `TODO`
 
 ## Iteration Execution Plan (Remaining)

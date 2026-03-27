@@ -101,6 +101,12 @@ Replay output now includes captured-vs-live diff for:
 - response headers SHA-256 hash
 - response body SHA-256 hash
 
+10. Quick benchmark helper:
+
+```bash
+cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concurrency 128 --proxy http://127.0.0.1:9090
+```
+
 8. Validate rules before starting proxy:
 
 ```bash

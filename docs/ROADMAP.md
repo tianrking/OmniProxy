@@ -120,6 +120,7 @@ Execution cadence:
   - Benchmark suite (latency/memory/concurrency)
   - Release automation and signed artifacts
   - Operator docs and troubleshooting runbook
+  - status: `omni-bench` 基准工具已接入（requests/concurrency/rps/latency p50/p95/p99）
 - Exit criteria:
   - v1.0.0 release candidate with reproducible CI artifacts
 
