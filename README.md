@@ -2,6 +2,14 @@
 
 OmniProxy is a modern MITM proxy core for API debugging and security analysis.
 
+Cross-platform target:
+
+- Linux (`amd64`, `arm64`, `arm32`)
+- Windows (`x64`)
+- macOS (local build support)
+
+CI includes multi-target build and `.deb` packaging.
+
 Current phase (core-first, no UI):
 
 - Explicit HTTP proxy + HTTPS `CONNECT` interception via MITM
@@ -82,3 +90,4 @@ Current TUI supports:
 ## Architecture
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+See [docs/ROADMAP.md](./docs/ROADMAP.md) for phased delivery and iteration estimates.

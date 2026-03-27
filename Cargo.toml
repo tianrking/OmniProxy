@@ -27,3 +27,17 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+[package.metadata.deb]
+maintainer = "tianrking <tian.r.king@gmail.com>"
+copyright = "2026, tianrking"
+license-file = ["LICENSE", "4"]
+depends = "$auto"
+section = "net"
+priority = "optional"
+extended-description = "OmniProxy is a modern MITM proxy core with filter-chain, WebSocket API, TUI, and Wasm plugin runtime."
+assets = [
+  ["target/release/omni_proxy", "usr/bin/omni-proxy", "755"],
+  ["target/release/omni-tui", "usr/bin/omni-tui", "755"],
+  ["README.md", "usr/share/doc/omni-proxy/README.md", "644"],
+]
