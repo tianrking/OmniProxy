@@ -179,6 +179,20 @@ cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concur
 4. 平均延迟。
 5. p50/p95/p99 延迟。
 
+## 8. 收敛压测（`omni-converge`）
+
+### 8.1 命令示例
+
+```bash
+cargo run --bin omni-converge -- --url https://example.com --requests 4000 --concurrency 256 --proxy http://127.0.0.1:9090
+```
+
+### 8.2 验证目标
+
+1. `http1` 模式在高并发下的错误率与延迟。
+2. `http2pref` 模式在高并发下的错误率与延迟。
+3. 收敛信号：多轮执行后错误率低、p95/p99 稳定。
+
 ## 8. 后端事件 API
 
 订阅方式：

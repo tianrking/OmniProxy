@@ -179,6 +179,20 @@ cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concur
 4. latency average
 5. latency p50/p95/p99
 
+## 8. Convergence Runner (`omni-converge`)
+
+### 8.1 Command
+
+```bash
+cargo run --bin omni-converge -- --url https://example.com --requests 4000 --concurrency 256 --proxy http://127.0.0.1:9090
+```
+
+### 8.2 What It Validates
+
+1. `http1` mode error rate and latency under concurrency.
+2. `http2pref` mode error rate and latency under concurrency.
+3. convergence signal: low error-rate and stable p95/p99 across repeated runs.
+
 ## 8. API Event Stream
 
 Subscribe:

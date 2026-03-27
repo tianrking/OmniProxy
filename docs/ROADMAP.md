@@ -129,6 +129,7 @@ Execution cadence:
   - Operator docs and troubleshooting runbook
   - status: `omni-bench` 基准工具已接入（requests/concurrency/rps/latency p50/p95/p99）
   - status+: release workflow 已接入 SHA256SUMS 与 PROVENANCE.json 产出
+  - status++: `omni-converge` 收敛工具已接入（http1/http2pref 并发收敛压测）
 - Exit criteria:
   - v1.0.0 release candidate with reproducible CI artifacts
 

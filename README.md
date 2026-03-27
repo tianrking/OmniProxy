@@ -117,6 +117,12 @@ Replay output now includes captured-vs-live diff for:
 cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concurrency 128 --proxy http://127.0.0.1:9090
 ```
 
+12. Concurrency convergence runner (http1 + http2 preference):
+
+```bash
+cargo run --bin omni-converge -- --url https://example.com --requests 4000 --concurrency 256 --proxy http://127.0.0.1:9090
+```
+
 8. Validate rules before starting proxy:
 
 ```bash

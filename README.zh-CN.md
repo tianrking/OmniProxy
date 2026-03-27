@@ -158,6 +158,12 @@ cargo run --bin omni_proxy -- --bootstrap
 cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concurrency 128 --proxy http://127.0.0.1:9090
 ```
 
+并发收敛压测（HTTP/1 + HTTP/2 偏好）：
+
+```bash
+cargo run --bin omni-converge -- --url https://example.com --requests 4000 --concurrency 256 --proxy http://127.0.0.1:9090
+```
+
 ## CI 与跨平台
 
 当前 CI 覆盖：
