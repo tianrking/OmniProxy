@@ -18,6 +18,12 @@ Detailed master checklist:
 
 Estimated total: **14 major iterations** (6 completed, 8 remaining).
 
+Execution cadence:
+- Major iterations remaining: `8` (`R1..R8`)
+- Minor commits per major iteration: `2~4`
+- Expected remaining commits: `16~32`
+- Update contract: every feature commit must sync `docs/CORE_FEATURE_PLAN.md` + this roadmap + impacted Chinese doc.
+
 ### Completed
 
 ### I1 (done)

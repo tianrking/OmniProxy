@@ -7,6 +7,23 @@ Status legend:
 - `IN_PROGRESS`: partially implemented, still missing key acceptance criteria.
 - `TODO`: not implemented yet.
 
+## Release Cadence (Authoritative)
+
+1. Planning unit:
+- Major iteration = one user-visible capability slice (R1..R8).
+- Minor iteration = concrete commit set inside one major iteration.
+
+2. Current estimate:
+- Remaining major iterations: **8**
+- Expected minor commits per major iteration: **2 to 4**
+- Expected remaining commits to v1.0 scope: **16 to 32**
+
+3. Progress policy:
+- Every merged feature commit must update:
+  - this file status (`DONE/IN_PROGRESS/TODO`)
+  - `docs/ROADMAP.md` remaining iteration count
+  - Chinese doc section impacted by the feature
+
 ## A. MITM Core (HTTP/HTTPS/WebSocket)
 
 1. Explicit HTTP proxy + HTTPS CONNECT MITM: `DONE`
@@ -91,3 +108,14 @@ Status legend:
 8. `R8`: v1.0 release hardening, signed artifacts, operator runbook.
 
 Estimated remaining major iterations: **8**.
+
+## Iteration Tracker
+
+1. `R1` WebSocket mutation hooks + ws filter pipeline: `IN_PROGRESS`
+2. `R2` Body capture with bounded memory and truncation policy: `TODO`
+3. `R3` Replay v2 with body replay and diff report: `TODO`
+4. `R4` Rule engine v2 operators + precedence model: `TODO`
+5. `R5` Wasm mutating ABI v1 and hostcall contract: `TODO`
+6. `R6` TLS trust diagnostics and bootstrap UX: `TODO`
+7. `R7` Performance benchmarks and memory pressure tests: `TODO`
+8. `R8` v1.0 release hardening and signed artifacts: `TODO`
