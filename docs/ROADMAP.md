@@ -98,6 +98,7 @@ Execution cadence:
   - Search/filter history
   - Replay trigger from selected flow
   - status: `docs/API_CONTRACT.md` 已落地，后端事件结构对外可直接对接
+  - status+: TUI `r` 已支持直接回放选中流量
 - Exit criteria:
   - Full keyboard workflow from capture -> filter -> replay
 

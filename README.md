@@ -186,8 +186,9 @@ This parser is ready to be wired into TUI/API query filtering.
 Current TUI supports:
 
 - flow list + detail pane
-- full keyboard navigation (`j/k`, `q`, `/`, `c`)
+- full keyboard navigation (`j/k`, `q`, `/`, `c`, `r`)
 - inline declarative filtering via DSL
+- replay selected flow with `r`
 
 ## Architecture
 

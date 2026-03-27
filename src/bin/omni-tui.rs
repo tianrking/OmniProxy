@@ -18,6 +18,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
+use reqwest::Method;
 use std::{collections::HashMap, io, time::Duration};
 use tokio::sync::mpsc;
 use tokio_tungstenite::connect_async;
@@ -69,7 +70,7 @@ async fn main() -> Result<()> {
 
     let mut app = App::default();
 
-    let loop_result = run_loop(&mut terminal, &mut app, &mut rx);
+    let loop_result = run_loop(&mut terminal, &mut app, &mut rx).await;
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -96,7 +97,7 @@ async fn ws_reader_task(url: &str, tx: mpsc::UnboundedSender<ApiEvent>) -> Resul
     Ok(())
 }
 
-fn run_loop(
+async fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
     rx: &mut mpsc::UnboundedReceiver<ApiEvent>,
@@ -123,6 +124,9 @@ fn run_loop(
                     KeyCode::Up | KeyCode::Char('k') => app.prev(),
                     KeyCode::Char('g') => app.first(),
                     KeyCode::Char('G') => app.last(),
+                    KeyCode::Char('r') => {
+                        app.replay_selected().await;
+                    }
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::Filter;
                         app.filter_buffer.clear();
@@ -192,7 +196,7 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
     let list = List::new(items)
         .block(
             Block::default()
-                .title("Flows (j/k up/down, g/G first/last, / filter, c clear, q quit)")
+                .title("Flows (j/k, g/G, /, r replay, c clear, q quit)")
                 .borders(Borders::ALL),
         )
         .highlight_style(
@@ -258,6 +262,41 @@ struct App {
 }
 
 impl App {
+    async fn replay_selected(&mut self) {
+        let Some(flow) = self.selected_flow().cloned() else {
+            self.status_line = "no flow selected for replay".into();
+            return;
+        };
+        let Some(method_raw) = flow.method else {
+            self.status_line = "selected flow has no method".into();
+            return;
+        };
+        let Some(uri) = flow.uri else {
+            self.status_line = "selected flow has no uri".into();
+            return;
+        };
+        if !uri.starts_with("http://") && !uri.starts_with("https://") {
+            self.status_line = "selected uri is not absolute".into();
+            return;
+        }
+        let method = match Method::from_bytes(method_raw.as_bytes()) {
+            Ok(m) => m,
+            Err(_) => {
+                self.status_line = format!("invalid method for replay: {}", method_raw);
+                return;
+            }
+        };
+        let client = reqwest::Client::new();
+        match client.request(method, &uri).send().await {
+            Ok(resp) => {
+                self.status_line = format!("replay ok: {} {}", resp.status().as_u16(), uri);
+            }
+            Err(err) => {
+                self.status_line = format!("replay failed: {}", err);
+            }
+        }
+    }
+
     fn ingest(&mut self, event: ApiEvent) {
         match event {
             ApiEvent::HttpRequest {

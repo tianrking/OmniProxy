@@ -118,7 +118,8 @@ cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
 2. `g/G`: first/last item.
 3. `/`: enter filter input mode.
 4. `c`: clear flows.
-5. `q`: quit.
+5. `r`: replay selected flow directly.
+6. `q`: quit.
 
 ### 5.3 Filter Expressions
 
