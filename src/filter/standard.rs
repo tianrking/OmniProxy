@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use hudsucker::hyper::StatusCode;
 use hudsucker::hyper::header::{HeaderName, HeaderValue};
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
 use std::{
@@ -269,6 +270,14 @@ impl HttpFilter for RuleFilter {
             if let (Ok(name), Ok(value)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {
                 res.headers_mut().insert(name, value);
             }
+        }
+        if let Some(code) = outcome.override_status {
+            if let Ok(status) = StatusCode::from_u16(code) {
+                *res.status_mut() = status;
+            }
+        }
+        if let Some(body) = outcome.replace_body {
+            *res.body_mut() = Body::from(body);
         }
         Ok(res)
     }

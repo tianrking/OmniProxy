@@ -26,6 +26,9 @@ jobs:
       - name: Cargo check
         run: cargo check --all-targets
 
+      - name: Cargo test
+        run: cargo test --all-targets --all-features
+
   build-linux:
     name: build (${{ matrix.target }})
     runs-on: ubuntu-latest
@@ -67,6 +70,7 @@ jobs:
           path: |
             target/${{ matrix.target }}/release/omni_proxy
             target/${{ matrix.target }}/release/omni-tui
+            target/${{ matrix.target }}/release/omni-replay
           if-no-files-found: error
 
   build-windows:
@@ -91,6 +95,7 @@ jobs:
           path: |
             target/x86_64-pc-windows-msvc/release/omni_proxy.exe
             target/x86_64-pc-windows-msvc/release/omni-tui.exe
+            target/x86_64-pc-windows-msvc/release/omni-replay.exe
           if-no-files-found: error
 
   package-deb:

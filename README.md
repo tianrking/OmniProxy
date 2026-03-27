@@ -21,6 +21,8 @@ Rules engine:
   - `deny <expr>`
   - `req.set_header Header: Value if <expr>`
   - `res.set_header Header: Value if <expr>`
+  - `res.set_status 4xx/5xx if <expr>`
+  - `res.replace_body "text" if <expr>`
 
 Current phase (core-first, no UI):
 
@@ -83,6 +85,9 @@ req.uri ~= "/admin"
 # Mutate request/response headers by policy
 req.set_header X-Omni-Policy: strict if req.host ~= "internal.example.com"
 res.set_header X-Omni-Scanned: true if res.status >= 400
+# Override response status and body (for mock/blocking workflows)
+res.set_status 451 if req.uri ~= "/geo-restricted"
+res.replace_body "blocked by policy" if req.uri ~= "/geo-restricted"
 ```
 
 ## Plugin Directory

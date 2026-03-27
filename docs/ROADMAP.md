@@ -13,7 +13,9 @@ OmniProxy target capabilities:
 
 ## Iteration Plan
 
-Estimated total: **10 major iterations** from current baseline.
+Estimated total: **14 major iterations** (6 completed, 8 remaining).
+
+### Completed
 
 ### I1 (done)
 - Core MITM skeleton
@@ -27,36 +29,99 @@ Estimated total: **10 major iterations** from current baseline.
 ### I3 (done)
 - Async JSONL flow persistence
 
-### I4 (in progress)
-- Replay engine v1 (replay by flow id, method override, target override)
-- CLI commands for replay
-  - status: `omni-replay` list + replay-by-index + request-id replay + header override 已落地
-  - status+: `dry-run` / `curl` 导出能力已落地
-  - next: body capture/replay + richer flow correlation
+### I4 (done)
+- Replay engine v1 (list/replay-by-index/request-id/header override)
+- Replay dry-run and `curl` export
 
-### I5
-- Rule router v1 (host/path/method matching)
-- Request/response mutation actions (headers/status/body-lite)
-  - status: method + host + uri deny 已落地；req/res header mutation 规则已接入过滤链
+### I5 (done)
+- Rule router v1 (deny + req/res header mutation)
+- Response policy actions in rule engine (`res.set_status`, `res.replace_body`)
 
-### I6
-- Wasm ABI v1 (mutating hooks + deny/allow actions)
-- Plugin timeout/resource policy hardening
+### I6 (done)
+- Cross-platform CI baseline (`linux amd64/arm64/arm32`, `windows x64`, `.deb`)
+- CI validation with format/check/test gates
+
+### Remaining
 
 ### I7
-- TUI v2 (tabs, focus model, live filter panel, replay controls)
-- Improved keyboard ergonomics and search
+- Replay v2:
+  - Capture and replay request body (json/form/binary-safe)
+  - Better request/response pairing for keep-alive and multiplexed traffic
+  - Replay result diff view (status/header/body hash)
+- Exit criteria:
+  - `omni-replay` can replay captured body with deterministic request-id correlation
 
 ### I8
-- TLS/CA UX hardening (install helpers, trust diagnostics)
-- Better platform compatibility validation (`linux/windows/macos`)
+- Rule engine v2:
+  - More expressive DSL (`starts_with`, `ends_with`, regex-lite)
+  - Action precedence and conflict policy
+  - Rule lint/check subcommand
+- Exit criteria:
+  - `omni_proxy --check-rules` validates files and prints actionable diagnostics
 
 ### I9
-- Security analyst features (match/replace presets, payload templates, audit logs)
-- Import/export flow bundles
+- Wasm ABI v1:
+  - Mutating request/response hooks
+  - Structured hostcalls (log, kv, metrics, reject)
+  - ABI versioning contract
+- Exit criteria:
+  - One sample plugin can modify request and response safely
 
 ### I10
-- Stabilization release: benchmark suite, docs polish, release automation, signed artifacts
+- Wasm hardening:
+  - Per-plugin timeout
+  - CPU/memory/failure budget
+  - Panic/fault isolation metrics
+- Exit criteria:
+  - Plugin timeout/fault does not block core forwarding path
+
+### I11
+- TUI v2:
+  - Split panes with focus model
+  - Search/filter history
+  - Replay trigger from selected flow
+- Exit criteria:
+  - Full keyboard workflow from capture -> filter -> replay
+
+### I12
+- TLS/CA operations:
+  - CA install helpers (macOS/Linux/Windows docs + commands)
+  - Trust diagnostics and verification command
+  - Cert cache visibility
+- Exit criteria:
+  - Users can validate local trust chain with one command
+
+### I13
+- Security analyst toolkit:
+  - Match/replace presets
+  - Payload templates
+  - Structured audit export bundle
+- Exit criteria:
+  - Analyst can run repeatable manipulation profile and export evidence
+
+### I14
+- Stabilization and release:
+  - Benchmark suite (latency/memory/concurrency)
+  - Release automation and signed artifacts
+  - Operator docs and troubleshooting runbook
+- Exit criteria:
+  - v1.0.0 release candidate with reproducible CI artifacts
+
+## Full Work Breakdown
+
+1. Core protocol:
+- HTTP/2 stream correctness and header normalization.
+- WebSocket frame interception and optional mutation.
+2. Data pipeline:
+- Backpressure strategy for API/TUI/event sinks.
+- Retention and compaction for stored flow logs.
+3. Rule/Wasm extensibility:
+- Stable public contracts (DSL and ABI) before ecosystem growth.
+- Compatibility tests across plugin versions.
+4. UX/Operations:
+- Proxy bootstrap command, cert trust diagnosis, operator troubleshooting.
+5. Delivery:
+- Benchmark gating in CI and deterministic release packaging.
 
 ## Risks and Cost Drivers
 
