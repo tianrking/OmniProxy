@@ -7,6 +7,7 @@ use crate::{
         standard::{AccessLogFilter, RequestIdFilter, WasmFilter},
     },
     plugins::WasmPluginHost,
+    storage::run_flow_logger,
 };
 use anyhow::{Context, Result};
 use hudsucker::{
@@ -65,6 +66,15 @@ pub async fn run(config: AppConfig) -> Result<()> {
     }
 
     let api_hub = ApiHub::new(4096);
+
+    let flow_log = config.flow_log_path.clone();
+    let flow_rx = api_hub.subscribe();
+    tokio::spawn(async move {
+        if let Err(err) = run_flow_logger(&flow_log, flow_rx).await {
+            error!(error = %err, "flow logger exited");
+        }
+    });
+
     let api_addr = config.api_listen_addr;
     let api_hub_clone = api_hub.clone();
     tokio::spawn(async move {

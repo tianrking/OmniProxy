@@ -20,6 +20,9 @@ pub struct Cli {
     #[arg(long, env = "OMNI_PLUGIN_DIR", default_value = ".omni-proxy/plugins")]
     pub plugin_dir: PathBuf,
 
+    #[arg(long, env = "OMNI_FLOW_LOG", default_value = ".omni-proxy/flows.jsonl")]
+    pub flow_log: PathBuf,
+
     #[arg(long, env = "OMNI_LOG", default_value = "info")]
     pub log_level: String,
 
@@ -34,6 +37,7 @@ pub struct AppConfig {
     pub ca_cert_path: PathBuf,
     pub ca_key_path: PathBuf,
     pub plugin_dir: PathBuf,
+    pub flow_log_path: PathBuf,
     pub wasm_timeout_ms: u64,
 }
 
@@ -54,6 +58,7 @@ impl AppConfig {
             ca_cert_path: expand_home(cli.ca_cert),
             ca_key_path: expand_home(cli.ca_key),
             plugin_dir: expand_home(cli.plugin_dir),
+            flow_log_path: expand_home(cli.flow_log),
             wasm_timeout_ms: cli.wasm_timeout_ms,
         })
     }

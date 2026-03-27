@@ -56,6 +56,9 @@ OmniProxy combines these into a core-first architecture:
 - `src/query/mod.rs`
   - declarative filter DSL parser/evaluator core
 
+- `src/storage/mod.rs`
+  - async JSONL flow persistence for replay/analytics foundations
+
 ## 4. Request Lifecycle
 
 1. client request enters proxy

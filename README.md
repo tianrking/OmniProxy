@@ -37,6 +37,11 @@ websocat ws://127.0.0.1:9091
 cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
 ```
 
+6. Flow persistence (JSONL) is on by default:
+
+- `~/.omni-proxy/flows.jsonl`
+- override with `--flow-log /path/to/flows.jsonl`
+
 ## Plugin Directory
 
 Default plugin directory: `~/.omni-proxy/plugins`
