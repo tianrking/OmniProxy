@@ -2,10 +2,11 @@ use super::HttpFilter;
 use crate::{
     api::{ApiEvent, ApiHub, now_ms},
     plugins::WasmPluginHost,
-    rules::RuleEngine,
+    rules::{RequestMeta, RuleEngine},
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use hudsucker::hyper::header::{HeaderName, HeaderValue};
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
 use std::{
     collections::{HashMap, VecDeque},
@@ -189,11 +190,33 @@ impl HttpFilter for WasmFilter {
 #[derive(Clone)]
 pub struct RuleFilter {
     rules: Arc<RuleEngine>,
+    inflight_req_meta: Arc<Mutex<HashMap<String, VecDeque<RequestMeta>>>>,
 }
 
 impl RuleFilter {
     pub fn new(rules: Arc<RuleEngine>) -> Self {
-        Self { rules }
+        Self {
+            rules,
+            inflight_req_meta: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    fn push_meta(&self, client: &str, meta: RequestMeta) {
+        if let Ok(mut m) = self.inflight_req_meta.lock() {
+            m.entry(client.to_string())
+                .or_insert_with(VecDeque::new)
+                .push_back(meta);
+        }
+    }
+
+    fn pop_meta(&self, client: &str) -> Option<RequestMeta> {
+        let mut guard = self.inflight_req_meta.lock().ok()?;
+        let q = guard.get_mut(client)?;
+        let val = q.pop_front();
+        if q.is_empty() {
+            guard.remove(client);
+        }
+        val
     }
 }
 
@@ -201,13 +224,16 @@ impl RuleFilter {
 impl HttpFilter for RuleFilter {
     async fn on_request(
         &self,
-        _ctx: &HttpContext,
-        req: Request<Body>,
+        ctx: &HttpContext,
+        mut req: Request<Body>,
     ) -> Result<RequestOrResponse> {
-        let method = req.method().as_str().to_string();
-        let uri = req.uri().to_string();
-        let host = extract_host(&req);
-        if self.rules.should_deny_request(&method, &uri, &host) {
+        let meta = RequestMeta {
+            method: req.method().as_str().to_string(),
+            uri: req.uri().to_string(),
+            host: extract_host(&req),
+        };
+        let decision = self.rules.eval_request(&meta);
+        if decision.denied {
             let denied = Response::builder()
                 .status(403)
                 .header("content-type", "text/plain; charset=utf-8")
@@ -215,7 +241,36 @@ impl HttpFilter for RuleFilter {
                 .expect("build deny response");
             return Ok(denied.into());
         }
+
+        for (k, v) in decision.add_headers {
+            if let (Ok(name), Ok(value)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {
+                req.headers_mut().insert(name, value);
+            }
+        }
+
+        self.push_meta(&ctx.client_addr.to_string(), meta);
         Ok(req.into())
+    }
+
+    async fn on_response(
+        &self,
+        ctx: &HttpContext,
+        mut res: Response<Body>,
+    ) -> Result<Response<Body>> {
+        let client = ctx.client_addr.to_string();
+        let fallback_meta = RequestMeta {
+            method: String::new(),
+            uri: String::new(),
+            host: String::new(),
+        };
+        let meta = self.pop_meta(&client).unwrap_or(fallback_meta);
+        let outcome = self.rules.eval_response(&meta, res.status().as_u16());
+        for (k, v) in outcome.add_headers {
+            if let (Ok(name), Ok(value)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {
+                res.headers_mut().insert(name, value);
+            }
+        }
+        Ok(res)
     }
 }
 

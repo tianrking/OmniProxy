@@ -121,6 +121,8 @@ fn run_loop(
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Down | KeyCode::Char('j') => app.next(),
                     KeyCode::Up | KeyCode::Char('k') => app.prev(),
+                    KeyCode::Char('g') => app.first(),
+                    KeyCode::Char('G') => app.last(),
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::Filter;
                         app.filter_buffer.clear();
@@ -163,8 +165,8 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
         .split(chunks[0]);
 
-    let items: Vec<ListItem> = app
-        .filtered_indices()
+    let indices = app.filtered_indices();
+    let items: Vec<ListItem> = indices
         .iter()
         .map(|idx| {
             let flow = &app.flows[*idx];
@@ -190,7 +192,7 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
     let list = List::new(items)
         .block(
             Block::default()
-                .title("Flows (j/k, / filter, c clear, q quit)")
+                .title("Flows (j/k up/down, g/G first/last, / filter, c clear, q quit)")
                 .borders(Borders::ALL),
         )
         .highlight_style(
@@ -205,6 +207,13 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
             Line::from(format!("Client: {}", flow.client)),
             Line::from(format!("Method: {}", flow.method.as_deref().unwrap_or("-"))),
             Line::from(format!("URI: {}", flow.uri.as_deref().unwrap_or("-"))),
+            Line::from(format!(
+                "Host: {}",
+                flow.uri
+                    .as_deref()
+                    .and_then(parse_host_from_uri)
+                    .unwrap_or("-")
+            )),
             Line::from(format!(
                 "Status: {}",
                 flow.status
@@ -232,7 +241,7 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
     );
 
     frame.render_widget(
-        Paragraph::new(app.status_line.as_str()).style(Style::default().fg(Color::DarkGray)),
+        Paragraph::new(app.footer_text()).style(Style::default().fg(Color::DarkGray)),
         chunks[2],
     );
 }
@@ -245,7 +254,6 @@ struct App {
     filter_buffer: String,
     filter_expr: Option<Expr>,
     status_line: String,
-    // Tracks the latest request index per client so responses can pair back.
     latest_req_idx_by_client: HashMap<String, usize>,
 }
 
@@ -321,10 +329,16 @@ impl App {
             return true;
         };
 
+        let host = flow
+            .uri
+            .as_deref()
+            .and_then(parse_host_from_uri)
+            .map(|s| s.to_string());
         let ctx = EvalContext {
             req_method: flow.method.clone(),
+            req_uri: flow.uri.clone(),
+            req_host: host,
             res_status: flow.status,
-            ..EvalContext::default()
         };
         expr.eval(&ctx)
     }
@@ -357,10 +371,43 @@ impl App {
         self.selected = self.selected.saturating_sub(1);
     }
 
+    fn first(&mut self) {
+        self.selected = 0;
+    }
+
+    fn last(&mut self) {
+        let len = self.filtered_indices().len();
+        self.selected = len.saturating_sub(1);
+    }
+
     fn clear(&mut self) {
         self.flows.clear();
         self.latest_req_idx_by_client.clear();
         self.selected = 0;
         self.status_line = "flows cleared".into();
     }
+
+    fn footer_text(&self) -> String {
+        let total = self.flows.len();
+        let visible = self.filtered_indices().len();
+        let mode = match self.input_mode {
+            InputMode::Normal => "NORMAL",
+            InputMode::Filter => "FILTER",
+        };
+        if self.status_line.is_empty() {
+            format!("mode={}  visible={}/{}", mode, visible, total)
+        } else {
+            format!(
+                "{} | mode={}  visible={}/{}",
+                self.status_line, mode, visible, total
+            )
+        }
+    }
+}
+
+fn parse_host_from_uri(uri: &str) -> Option<&str> {
+    let rest = uri
+        .strip_prefix("http://")
+        .or_else(|| uri.strip_prefix("https://"))?;
+    Some(rest.split('/').next()?.split(':').next().unwrap_or(""))
 }

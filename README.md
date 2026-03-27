@@ -17,6 +17,10 @@ Rules engine:
 - each non-empty non-comment line (`#`) is a deny rule
 - supported request fields now include `req.method`, `req.host`, `req.uri`
 - string contains operator: `~=`
+- action syntax:
+  - `deny <expr>`
+  - `req.set_header Header: Value if <expr>`
+  - `res.set_header Header: Value if <expr>`
 
 Current phase (core-first, no UI):
 
@@ -76,6 +80,9 @@ req.method == "CONNECT"
 # Block specific target host/path
 req.host ~= "internal.example.com"
 req.uri ~= "/admin"
+# Mutate request/response headers by policy
+req.set_header X-Omni-Policy: strict if req.host ~= "internal.example.com"
+res.set_header X-Omni-Scanned: true if res.status >= 400
 ```
 
 ## Plugin Directory

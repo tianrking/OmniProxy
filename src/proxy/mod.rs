@@ -102,9 +102,13 @@ pub async fn run(config: AppConfig) -> Result<()> {
         config.wasm_timeout_ms,
     )?);
     let rules = Arc::new(RuleEngine::load(&config.rule_file_path)?);
+    let rs = rules.stats();
     info!(
         rule_file = %config.rule_file_path.display(),
         rule_count = rules.count(),
+        deny_rules = rs.deny_rules,
+        req_header_rules = rs.req_header_rules,
+        res_header_rules = rs.res_header_rules,
         "rule engine ready"
     );
     let chain = FilterChain::new(vec![
