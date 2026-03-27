@@ -44,14 +44,23 @@ impl HttpFilter for RequestIdFilter {
 pub struct AccessLogFilter {
     pub hub: Option<ApiHub>,
     pub capture_body_max_bytes: usize,
+    pub capture_body_sample_rate: f64,
+    pub capture_body_compressed: bool,
     inflight_req_ids: Arc<Mutex<HashMap<String, VecDeque<String>>>>,
 }
 
 impl AccessLogFilter {
-    pub fn with_hub(hub: Option<ApiHub>, capture_body_max_bytes: usize) -> Self {
+    pub fn with_hub(
+        hub: Option<ApiHub>,
+        capture_body_max_bytes: usize,
+        capture_body_sample_rate: f64,
+        capture_body_compressed: bool,
+    ) -> Self {
         Self {
             hub,
             capture_body_max_bytes,
+            capture_body_sample_rate,
+            capture_body_compressed,
             inflight_req_ids: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -78,7 +87,20 @@ impl AccessLogFilter {
 #[async_trait]
 impl HttpFilter for AccessLogFilter {
     async fn on_request(&self, ctx: &HttpContext, req: Request<Body>) -> Result<RequestOrResponse> {
-        let (req, req_body) = capture_request_body(req, self.capture_body_max_bytes).await?;
+        let sample_key = req
+            .headers()
+            .get("x-omni-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| format!("{}:{}", ctx.client_addr, req.uri()));
+        let should_capture = should_sample_body(&sample_key, self.capture_body_sample_rate);
+        let (req, req_body) = capture_request_body(
+            req,
+            self.capture_body_max_bytes,
+            self.capture_body_compressed,
+            should_capture,
+        )
+        .await?;
         let client = ctx.client_addr.to_string();
         let request_id = req
             .headers()
@@ -120,7 +142,20 @@ impl HttpFilter for AccessLogFilter {
     }
 
     async fn on_response(&self, ctx: &HttpContext, res: Response<Body>) -> Result<Response<Body>> {
-        let (mut res, res_body) = capture_response_body(res, self.capture_body_max_bytes).await?;
+        let sample_key = res
+            .headers()
+            .get("x-omni-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| format!("{}:{}", ctx.client_addr, res.status().as_u16()));
+        let should_capture = should_sample_body(&sample_key, self.capture_body_sample_rate);
+        let (mut res, res_body) = capture_response_body(
+            res,
+            self.capture_body_max_bytes,
+            self.capture_body_compressed,
+            should_capture,
+        )
+        .await?;
         let client = ctx.client_addr.to_string();
         let from_header = res
             .headers()
@@ -439,8 +474,24 @@ struct CapturedBody {
 async fn capture_request_body(
     req: Request<Body>,
     max_bytes: usize,
+    capture_compressed: bool,
+    should_capture: bool,
 ) -> Result<(Request<Body>, CapturedBody)> {
     let (parts, body) = req.into_parts();
+    if !should_capture {
+        return Ok((Request::from_parts(parts, body), CapturedBody::default()));
+    }
+    if !capture_compressed && is_compressed(parts.headers.get("content-encoding")) {
+        let body_size = content_length(parts.headers.get("content-length"));
+        return Ok((
+            Request::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size,
+            },
+        ));
+    }
     let Some(content_len) = content_length(parts.headers.get("content-length")) else {
         return Ok((Request::from_parts(parts, body), CapturedBody::default()));
     };
@@ -474,8 +525,24 @@ async fn capture_request_body(
 async fn capture_response_body(
     res: Response<Body>,
     max_bytes: usize,
+    capture_compressed: bool,
+    should_capture: bool,
 ) -> Result<(Response<Body>, CapturedBody)> {
     let (parts, body) = res.into_parts();
+    if !should_capture {
+        return Ok((Response::from_parts(parts, body), CapturedBody::default()));
+    }
+    if !capture_compressed && is_compressed(parts.headers.get("content-encoding")) {
+        let body_size = content_length(parts.headers.get("content-length"));
+        return Ok((
+            Response::from_parts(parts, body),
+            CapturedBody {
+                body_b64: None,
+                body_truncated: true,
+                body_size,
+            },
+        ));
+    }
     let Some(content_len) = content_length(parts.headers.get("content-length")) else {
         return Ok((Response::from_parts(parts, body), CapturedBody::default()));
     };
@@ -509,4 +576,29 @@ async fn capture_response_body(
 fn content_length(v: Option<&HeaderValue>) -> Option<usize> {
     v.and_then(|x| x.to_str().ok())
         .and_then(|s| s.parse::<usize>().ok())
+}
+
+fn is_compressed(v: Option<&HeaderValue>) -> bool {
+    v.and_then(|x| x.to_str().ok())
+        .map(|s| {
+            let s = s.to_ascii_lowercase();
+            s.contains("gzip") || s.contains("br") || s.contains("deflate") || s.contains("zstd")
+        })
+        .unwrap_or(false)
+}
+
+fn should_sample_body(key: &str, rate: f64) -> bool {
+    if rate >= 1.0 {
+        return true;
+    }
+    if rate <= 0.0 {
+        return false;
+    }
+    let mut h: u64 = 1469598103934665603;
+    for b in key.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(1099511628211);
+    }
+    let normalized = (h as f64) / (u64::MAX as f64);
+    normalized <= rate
 }

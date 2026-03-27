@@ -11,7 +11,7 @@ use crate::{
     },
     plugins::WasmPluginHost,
     rules::RuleEngine,
-    storage::run_flow_logger,
+    storage::{FlowLogOptions, run_flow_logger},
 };
 use anyhow::{Context, Result};
 use hudsucker::{
@@ -85,8 +85,12 @@ pub async fn run(config: AppConfig) -> Result<()> {
 
     let flow_log = config.flow_log_path.clone();
     let flow_rx = api_hub.subscribe();
+    let flow_opts = FlowLogOptions {
+        rotate_bytes: config.flow_log_rotate_bytes,
+        max_files: config.flow_log_max_files,
+    };
     tokio::spawn(async move {
-        if let Err(err) = run_flow_logger(&flow_log, flow_rx).await {
+        if let Err(err) = run_flow_logger(&flow_log, flow_rx, flow_opts).await {
             error!(error = %err, "flow logger exited");
         }
     });
@@ -127,6 +131,8 @@ pub async fn run(config: AppConfig) -> Result<()> {
         Arc::new(AccessLogFilter::with_hub(
             Some(api_hub.clone()),
             config.capture_body_max_bytes,
+            config.capture_body_sample_rate,
+            config.capture_body_compressed,
         )),
         Arc::new(WasmFilter::new(wasm_host)),
     ]);

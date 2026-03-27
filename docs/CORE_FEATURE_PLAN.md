@@ -14,9 +14,9 @@ Status legend:
 - Minor iteration = concrete commit set inside one major iteration.
 
 2. Current estimate:
-- Remaining major iterations: **8**
+- Remaining major iterations: **7**
 - Expected minor commits per major iteration: **2 to 4**
-- Expected remaining commits to v1.0 scope: **16 to 32**
+- Expected remaining commits to v1.0 scope: **14 to 28**
 
 3. Progress policy:
 - Every merged feature commit must update:
@@ -32,7 +32,7 @@ Status legend:
 4. HTTP/2 correctness and multiplex stream handling: `IN_PROGRESS`
 5. WebSocket transparent interception: `DONE`
 6. WebSocket frame-level observability (text/binary/ping/pong/close): `DONE`
-7. WebSocket frame mutation pipeline: `TODO`
+7. WebSocket frame mutation pipeline: `DONE`
 8. Large payload streaming with bounded memory strategy: `TODO`
 9. Backpressure policy for slow downstream sinks: `TODO`
 10. Deterministic request/response correlation under concurrency: `IN_PROGRESS`
@@ -43,9 +43,9 @@ Status legend:
 2. Persistent flow logging (JSONL): `DONE`
 3. Request/response headers capture: `DONE`
 4. Request/response body capture (binary-safe): `IN_PROGRESS`
-5. Truncation/sampling policy for huge payloads: `TODO`
+5. Truncation/sampling policy for huge payloads: `IN_PROGRESS`
 6. Compression-aware storage strategy: `TODO`
-7. Flow retention and rotation policy: `TODO`
+7. Flow retention and rotation policy: `IN_PROGRESS`
 
 ## C. Replay Engine
 
@@ -98,16 +98,15 @@ Status legend:
 
 ## Iteration Execution Plan (Remaining)
 
-1. `R1`: WebSocket mutation hooks + ws filter pipeline.
-2. `R2`: Request/response body capture with bounded memory and truncation policy.
-3. `R3`: Replay v2 with body replay and diff report.
-4. `R4`: Rule engine v2 operators + precedence model.
-5. `R5`: Wasm mutating ABI v1 and hostcall contract.
-6. `R6`: TLS trust diagnostics and bootstrap UX.
-7. `R7`: Performance benchmarks and memory pressure tests.
-8. `R8`: v1.0 release hardening, signed artifacts, operator runbook.
+1. `R2`: Request/response body capture with bounded memory and truncation policy.
+2. `R3`: Replay v2 with body replay and diff report.
+3. `R4`: Rule engine v2 operators + precedence model.
+4. `R5`: Wasm mutating ABI v1 and hostcall contract.
+5. `R6`: TLS trust diagnostics and bootstrap UX.
+6. `R7`: Performance benchmarks and memory pressure tests.
+7. `R8`: v1.0 release hardening, signed artifacts, operator runbook.
 
-Estimated remaining major iterations: **8**.
+Estimated remaining major iterations: **7**.
 
 ## Iteration Tracker
 

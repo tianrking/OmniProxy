@@ -50,6 +50,22 @@ pub struct Cli {
         default_value_t = 65536_usize
     )]
     pub capture_body_max_bytes: usize,
+
+    #[arg(long, env = "OMNI_CAPTURE_BODY_SAMPLE_RATE", default_value_t = 1.0_f64)]
+    pub capture_body_sample_rate: f64,
+
+    #[arg(long, env = "OMNI_CAPTURE_BODY_COMPRESSED", default_value_t = false)]
+    pub capture_body_compressed: bool,
+
+    #[arg(
+        long,
+        env = "OMNI_FLOW_LOG_ROTATE_BYTES",
+        default_value_t = 134_217_728_u64
+    )]
+    pub flow_log_rotate_bytes: u64,
+
+    #[arg(long, env = "OMNI_FLOW_LOG_MAX_FILES", default_value_t = 5_usize)]
+    pub flow_log_max_files: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -66,6 +82,10 @@ pub struct AppConfig {
     pub ws_drop_ping: bool,
     pub ws_text_rewrite: Vec<(String, String)>,
     pub capture_body_max_bytes: usize,
+    pub capture_body_sample_rate: f64,
+    pub capture_body_compressed: bool,
+    pub flow_log_rotate_bytes: u64,
+    pub flow_log_max_files: usize,
 }
 
 impl AppConfig {
@@ -92,6 +112,10 @@ impl AppConfig {
             ws_drop_ping: cli.ws_drop_ping,
             ws_text_rewrite: parse_rewrite_rules(&cli.ws_text_rewrite)?,
             capture_body_max_bytes: cli.capture_body_max_bytes,
+            capture_body_sample_rate: normalize_sample_rate(cli.capture_body_sample_rate),
+            capture_body_compressed: cli.capture_body_compressed,
+            flow_log_rotate_bytes: cli.flow_log_rotate_bytes,
+            flow_log_max_files: cli.flow_log_max_files.max(1),
         })
     }
 }
@@ -105,6 +129,13 @@ fn parse_rewrite_rules(raw: &[String]) -> Result<Vec<(String, String)>> {
         out.push((from.to_string(), to.to_string()));
     }
     Ok(out)
+}
+
+fn normalize_sample_rate(v: f64) -> f64 {
+    if v.is_nan() {
+        return 1.0;
+    }
+    v.clamp(0.0, 1.0)
 }
 
 fn expand_home(path: PathBuf) -> PathBuf {
