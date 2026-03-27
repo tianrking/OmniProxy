@@ -103,6 +103,7 @@ Execution cadence:
   - CA install helpers (macOS/Linux/Windows docs + commands)
   - Trust diagnostics and verification command
   - Cert cache visibility
+  - status: `--diagnose-ca` 已接入（证书存在性/尺寸/可解析性检查）
 - Exit criteria:
   - Users can validate local trust chain with one command
 

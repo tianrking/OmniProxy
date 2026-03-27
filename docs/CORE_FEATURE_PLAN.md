@@ -82,7 +82,7 @@ Status legend:
 1. Keyboard-first TUI baseline: `DONE`
 2. Live query filtering: `DONE`
 3. Replay from TUI selected flow: `TODO`
-4. TLS trust diagnostics command: `TODO`
+4. TLS trust diagnostics command: `IN_PROGRESS`
 5. One-command local bootstrap workflow: `TODO`
 6. Web API contract documentation: `IN_PROGRESS`
 

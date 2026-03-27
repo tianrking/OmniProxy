@@ -125,6 +125,12 @@ cargo run --bin omni_proxy -- --check-rules
 cargo run --bin omni_proxy -- --check-rules --rule-file ./examples/rules-ci.txt
 ```
 
+CA 证书诊断（不启动代理）：
+
+```bash
+cargo run --bin omni_proxy -- --diagnose-ca
+```
+
 ## CI 与跨平台
 
 当前 CI 覆盖：

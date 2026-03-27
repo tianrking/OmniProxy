@@ -108,6 +108,12 @@ cargo run --bin omni_proxy -- --check-rules
 cargo run --bin omni_proxy -- --check-rules --rule-file ./examples/rules-ci.txt
 ```
 
+9. Diagnose local CA trust material quickly:
+
+```bash
+cargo run --bin omni_proxy -- --diagnose-ca
+```
+
 Rule file example:
 
 ```txt

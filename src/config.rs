@@ -35,6 +35,9 @@ pub struct Cli {
     #[arg(long, env = "OMNI_CHECK_RULES", default_value_t = false)]
     pub check_rules: bool,
 
+    #[arg(long, env = "OMNI_DIAGNOSE_CA", default_value_t = false)]
+    pub diagnose_ca: bool,
+
     #[arg(long, env = "OMNI_WS_PREVIEW_BYTES", default_value_t = 256_usize)]
     pub ws_preview_bytes: usize,
 

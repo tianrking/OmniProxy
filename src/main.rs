@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
+use omni_proxy::cert::diagnose_ca;
 use omni_proxy::config::Cli;
 use omni_proxy::rules::RuleEngine;
 use tracing::info;
@@ -31,6 +32,26 @@ async fn main() -> Result<()> {
             s.res_header_rules,
             s.res_status_rules,
             s.res_body_rules
+        );
+        return Ok(());
+    }
+
+    if cli.diagnose_ca {
+        let d = diagnose_ca(&app.ca_cert_path, &app.ca_key_path).await?;
+        println!(
+            "ca_cert={}\nca_key={}\ncert_exists={}\nkey_exists={}\ncert_size={}\nkey_size={}\npair_parse_ok={}\nmessage={}",
+            app.ca_cert_path.display(),
+            app.ca_key_path.display(),
+            d.cert_exists,
+            d.key_exists,
+            d.cert_size
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "-".into()),
+            d.key_size
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "-".into()),
+            d.pair_parse_ok,
+            d.message
         );
         return Ok(());
     }
