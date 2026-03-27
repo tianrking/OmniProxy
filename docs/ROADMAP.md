@@ -27,9 +27,10 @@ Estimated total: **10 major iterations** from current baseline.
 ### I3 (done)
 - Async JSONL flow persistence
 
-### I4
+### I4 (in progress)
 - Replay engine v1 (replay by flow id, method override, target override)
 - CLI commands for replay
+  - status: `omni-replay` list + replay-by-index 已落地，后续补 body/header 重放
 
 ### I5
 - Rule router v1 (host/path/method matching)

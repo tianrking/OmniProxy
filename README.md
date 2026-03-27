@@ -50,6 +50,13 @@ cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
 - `~/.omni-proxy/flows.jsonl`
 - override with `--flow-log /path/to/flows.jsonl`
 
+7. Replay v1 from persisted flows:
+
+```bash
+cargo run --bin omni-replay -- --list
+cargo run --bin omni-replay -- --index 12
+```
+
 ## Plugin Directory
 
 Default plugin directory: `~/.omni-proxy/plugins`
