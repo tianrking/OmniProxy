@@ -97,7 +97,7 @@ pub async fn run(config: AppConfig) -> Result<()> {
     )?);
     let chain = FilterChain::new(vec![
         Arc::new(RequestIdFilter),
-        Arc::new(AccessLogFilter { hub: Some(api_hub) }),
+        Arc::new(AccessLogFilter::with_hub(Some(api_hub))),
         Arc::new(WasmFilter::new(wasm_host)),
     ]);
 

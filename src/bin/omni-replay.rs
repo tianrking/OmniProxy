@@ -28,11 +28,18 @@ struct Cli {
 
     #[arg(long = "header")]
     headers: Vec<String>,
+
+    #[arg(long, default_value_t = false)]
+    dry_run: bool,
+
+    #[arg(long, default_value_t = false)]
+    print_curl: bool,
 }
 
 #[derive(Debug, Clone)]
 struct ReplayCandidate {
     index: usize,
+    timestamp_ms: u64,
     request_id: Option<String>,
     client: String,
     method: String,
@@ -49,12 +56,13 @@ async fn main() -> Result<()> {
     if cli.list {
         for req in &requests {
             println!(
-                "#{:04}  {:6}  {}  ({})  req_id={}",
+                "#{:04}  {:6}  {}  ({})  req_id={}  ts={}",
                 req.index,
                 req.method,
                 req.uri,
                 req.client,
-                req.request_id.as_deref().unwrap_or("-")
+                req.request_id.as_deref().unwrap_or("-"),
+                req.timestamp_ms,
             );
         }
         return Ok(());
@@ -98,6 +106,15 @@ async fn main() -> Result<()> {
 
     let headers = build_headers(&candidate.headers, &cli.headers)?;
 
+    if cli.print_curl || cli.dry_run {
+        println!("{}", render_curl(&method.to_string(), &uri, &headers));
+    }
+
+    if cli.dry_run {
+        println!("dry-run enabled, skip actual request");
+        return Ok(());
+    }
+
     let client = reqwest::Client::builder().build()?;
     let resp = client
         .request(method.clone(), &uri)
@@ -135,6 +152,7 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
         };
 
         if let ApiEvent::HttpRequest {
+            timestamp_ms,
             request_id,
             client,
             method,
@@ -144,6 +162,7 @@ fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
         {
             out.push(ReplayCandidate {
                 index: i,
+                timestamp_ms,
                 request_id,
                 client,
                 method,
@@ -208,4 +227,22 @@ fn is_hop_by_hop(name: &str) -> bool {
             | "host"
             | "content-length"
     )
+}
+
+fn render_curl(method: &str, uri: &str, headers: &HeaderMap) -> String {
+    let mut out = format!("curl -X {} '{}'", method, uri);
+    for (k, v) in headers {
+        if let Ok(val) = v.to_str() {
+            out.push_str(&format!(
+                " -H '{}: {}'",
+                k.as_str(),
+                shell_escape_single(val)
+            ));
+        }
+    }
+    out
+}
+
+fn shell_escape_single(s: &str) -> String {
+    s.replace('\'', "'\"'\"'")
 }

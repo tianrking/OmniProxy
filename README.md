@@ -56,6 +56,7 @@ cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
 cargo run --bin omni-replay -- --list
 cargo run --bin omni-replay -- --index 12
 cargo run --bin omni-replay -- --request-id 4d3a... --header "Authorization: Bearer xxx"
+cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
 ```
 
 ## Plugin Directory

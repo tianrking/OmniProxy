@@ -18,6 +18,8 @@ pub struct ApiHub {
 pub enum ApiEvent {
     HttpRequest {
         #[serde(default)]
+        timestamp_ms: u64,
+        #[serde(default)]
         request_id: Option<String>,
         client: String,
         method: String,
@@ -27,9 +29,13 @@ pub enum ApiEvent {
     },
     HttpResponse {
         #[serde(default)]
+        timestamp_ms: u64,
+        #[serde(default)]
         request_id: Option<String>,
         client: String,
         status: u16,
+        #[serde(default)]
+        headers: Vec<(String, String)>,
     },
 }
 
@@ -46,6 +52,14 @@ impl ApiHub {
     pub fn subscribe(&self) -> broadcast::Receiver<ApiEvent> {
         self.tx.subscribe()
     }
+}
+
+pub fn now_ms() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 pub async fn serve_ws_api(listen: std::net::SocketAddr, hub: ApiHub) -> Result<()> {

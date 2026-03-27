@@ -1,9 +1,15 @@
 use super::HttpFilter;
-use crate::{api::ApiEvent, api::ApiHub, plugins::WasmPluginHost};
+use crate::{
+    api::{ApiEvent, ApiHub, now_ms},
+    plugins::WasmPluginHost,
+};
 use anyhow::Result;
 use async_trait::async_trait;
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+};
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -31,20 +37,53 @@ impl HttpFilter for RequestIdFilter {
 #[derive(Clone, Default)]
 pub struct AccessLogFilter {
     pub hub: Option<ApiHub>,
+    inflight_req_ids: Arc<Mutex<HashMap<String, VecDeque<String>>>>,
+}
+
+impl AccessLogFilter {
+    pub fn with_hub(hub: Option<ApiHub>) -> Self {
+        Self {
+            hub,
+            inflight_req_ids: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    fn push_req_id(&self, client: &str, req_id: &str) {
+        if let Ok(mut m) = self.inflight_req_ids.lock() {
+            m.entry(client.to_string())
+                .or_insert_with(VecDeque::new)
+                .push_back(req_id.to_string());
+        }
+    }
+
+    fn pop_req_id(&self, client: &str) -> Option<String> {
+        let mut guard = self.inflight_req_ids.lock().ok()?;
+        let q = guard.get_mut(client)?;
+        let val = q.pop_front();
+        if q.is_empty() {
+            guard.remove(client);
+        }
+        val
+    }
 }
 
 #[async_trait]
 impl HttpFilter for AccessLogFilter {
     async fn on_request(&self, ctx: &HttpContext, req: Request<Body>) -> Result<RequestOrResponse> {
+        let client = ctx.client_addr.to_string();
         let request_id = req
             .headers()
             .get("x-omni-request-id")
             .and_then(|v| v.to_str().ok())
             .map(ToOwned::to_owned);
+        if let Some(req_id) = request_id.as_deref() {
+            self.push_req_id(&client, req_id);
+        }
         if let Some(hub) = &self.hub {
             hub.publish(ApiEvent::HttpRequest {
+                timestamp_ms: now_ms(),
                 request_id,
-                client: ctx.client_addr.to_string(),
+                client: client.clone(),
                 method: req.method().to_string(),
                 uri: req.uri().to_string(),
                 headers: req
@@ -68,17 +107,40 @@ impl HttpFilter for AccessLogFilter {
         Ok(req.into())
     }
 
-    async fn on_response(&self, ctx: &HttpContext, res: Response<Body>) -> Result<Response<Body>> {
-        let request_id = res
+    async fn on_response(
+        &self,
+        ctx: &HttpContext,
+        mut res: Response<Body>,
+    ) -> Result<Response<Body>> {
+        let client = ctx.client_addr.to_string();
+        let from_header = res
             .headers()
             .get("x-omni-request-id")
             .and_then(|v| v.to_str().ok())
             .map(ToOwned::to_owned);
+        let request_id = from_header.or_else(|| self.pop_req_id(&client));
+        if let Some(req_id) = request_id.as_deref() {
+            res.headers_mut().insert(
+                "x-omni-request-id",
+                req_id.parse().expect("valid request id header"),
+            );
+        }
         if let Some(hub) = &self.hub {
             hub.publish(ApiEvent::HttpResponse {
+                timestamp_ms: now_ms(),
                 request_id,
-                client: ctx.client_addr.to_string(),
+                client: client.clone(),
                 status: res.status().as_u16(),
+                headers: res
+                    .headers()
+                    .iter()
+                    .map(|(k, v)| {
+                        (
+                            k.to_string(),
+                            String::from_utf8_lossy(v.as_bytes()).to_string(),
+                        )
+                    })
+                    .collect(),
             });
         }
         info!(
