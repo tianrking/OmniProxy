@@ -289,6 +289,7 @@ impl App {
                     });
                 }
             }
+            ApiEvent::WebSocketFrame { .. } => {}
         }
 
         if !self.flows.is_empty() {

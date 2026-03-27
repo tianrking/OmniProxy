@@ -11,6 +11,9 @@ OmniProxy target capabilities:
 5. Geek-first UX: keyboard TUI and decoupled backend API
 6. Flow storage, replay, and security analysis workflows
 
+Detailed master checklist:
+- `docs/CORE_FEATURE_PLAN.md` (authoritative parity and execution plan)
+
 ## Iteration Plan
 
 Estimated total: **14 major iterations** (6 completed, 8 remaining).

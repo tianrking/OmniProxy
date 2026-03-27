@@ -37,6 +37,16 @@ pub enum ApiEvent {
         #[serde(default)]
         headers: Vec<(String, String)>,
     },
+    WebSocketFrame {
+        #[serde(default)]
+        timestamp_ms: u64,
+        #[serde(default)]
+        client: Option<String>,
+        kind: String,
+        payload_len: usize,
+        #[serde(default)]
+        preview: Option<String>,
+    },
 }
 
 impl ApiHub {

@@ -12,6 +12,9 @@ Cross-platform target:
 
 CI includes multi-target build and `.deb` packaging.
 
+Core implementation checklist:
+- `docs/CORE_FEATURE_PLAN.md`
+
 Rules engine:
 
 - default file: `~/.omni-proxy/rules.txt`
@@ -33,6 +36,7 @@ Current phase (core-first, no UI):
 - Filter-chain architecture inspired by Envoy/Pingora
 - Wasm plugin host (Wasmtime) with request/response hooks
 - WebSocket forwarding support through the underlying proxy engine
+- WebSocket frame-level observability via backend event API (text/binary/ping/pong/close)
 
 ## Quick Start
 
@@ -54,6 +58,10 @@ cargo run --release -- --listen 127.0.0.1:9090
 ```bash
 websocat ws://127.0.0.1:9091
 ```
+
+WebSocket frame preview truncation can be tuned via:
+- `--ws-preview-bytes`
+- env: `OMNI_WS_PREVIEW_BYTES`
 
 5. Run geek-first TUI (first iteration):
 

@@ -1,5 +1,5 @@
 use crate::{
-    api::{ApiHub, serve_ws_api},
+    api::{ApiEvent, ApiHub, now_ms, serve_ws_api},
     cert::load_or_init_issuer,
     config::AppConfig,
     filter::{
@@ -22,6 +22,8 @@ use tracing::{error, info};
 #[derive(Clone)]
 struct OmniHandler {
     chain: FilterChain,
+    hub: ApiHub,
+    ws_preview_bytes: usize,
 }
 
 impl HttpHandler for OmniHandler {
@@ -55,6 +57,35 @@ impl HttpHandler for OmniHandler {
 
 impl WebSocketHandler for OmniHandler {
     async fn handle_message(&mut self, _ctx: &WebSocketContext, msg: Message) -> Option<Message> {
+        let (kind, payload_len, preview) = match &msg {
+            Message::Text(text) => (
+                "text".to_string(),
+                text.len(),
+                Some(truncate_preview(text.as_str(), self.ws_preview_bytes)),
+            ),
+            Message::Binary(bin) => (
+                "binary".to_string(),
+                bin.len(),
+                Some(format!("<binary:{} bytes>", bin.len())),
+            ),
+            Message::Ping(bin) => ("ping".to_string(), bin.len(), None),
+            Message::Pong(bin) => ("pong".to_string(), bin.len(), None),
+            Message::Close(frame) => (
+                "close".to_string(),
+                0,
+                frame
+                    .as_ref()
+                    .map(|f| format!("code={} reason={}", f.code, f.reason)),
+            ),
+            Message::Frame(_) => ("frame".to_string(), 0, None),
+        };
+        self.hub.publish(ApiEvent::WebSocketFrame {
+            timestamp_ms: now_ms(),
+            client: None,
+            kind,
+            payload_len,
+            preview,
+        });
         Some(msg)
     }
 }
@@ -82,9 +113,9 @@ pub async fn run(config: AppConfig) -> Result<()> {
     });
 
     let api_addr = config.api_listen_addr;
-    let api_hub_clone = api_hub.clone();
+    let api_hub_for_server = api_hub.clone();
     tokio::spawn(async move {
-        if let Err(err) = serve_ws_api(api_addr, api_hub_clone).await {
+        if let Err(err) = serve_ws_api(api_addr, api_hub_for_server).await {
             error!(error = %err, "ws api server exited");
         }
     });
@@ -114,11 +145,15 @@ pub async fn run(config: AppConfig) -> Result<()> {
     let chain = FilterChain::new(vec![
         Arc::new(RequestIdFilter),
         Arc::new(RuleFilter::new(rules)),
-        Arc::new(AccessLogFilter::with_hub(Some(api_hub))),
+        Arc::new(AccessLogFilter::with_hub(Some(api_hub.clone()))),
         Arc::new(WasmFilter::new(wasm_host)),
     ]);
 
-    let handler = OmniHandler { chain };
+    let handler = OmniHandler {
+        chain,
+        hub: api_hub,
+        ws_preview_bytes: config.ws_preview_bytes,
+    };
 
     let proxy = Proxy::builder()
         .with_addr(config.listen_addr)
@@ -136,6 +171,17 @@ pub async fn run(config: AppConfig) -> Result<()> {
         "OmniProxy running"
     );
     proxy.start().await.map_err(|e| anyhow::anyhow!(e))
+}
+
+fn truncate_preview(input: &str, max_bytes: usize) -> String {
+    if input.len() <= max_bytes {
+        return input.to_string();
+    }
+    let mut end = max_bytes.min(input.len());
+    while !input.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}…", &input[..end])
 }
 
 async fn shutdown_signal() {

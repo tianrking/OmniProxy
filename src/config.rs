@@ -34,6 +34,9 @@ pub struct Cli {
 
     #[arg(long, env = "OMNI_CHECK_RULES", default_value_t = false)]
     pub check_rules: bool,
+
+    #[arg(long, env = "OMNI_WS_PREVIEW_BYTES", default_value_t = 256_usize)]
+    pub ws_preview_bytes: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +49,7 @@ pub struct AppConfig {
     pub rule_file_path: PathBuf,
     pub flow_log_path: PathBuf,
     pub wasm_timeout_ms: u64,
+    pub ws_preview_bytes: usize,
 }
 
 impl AppConfig {
@@ -68,6 +72,7 @@ impl AppConfig {
             rule_file_path: expand_home(cli.rule_file),
             flow_log_path: expand_home(cli.flow_log),
             wasm_timeout_ms: cli.wasm_timeout_ms,
+            ws_preview_bytes: cli.ws_preview_bytes,
         })
     }
 }
