@@ -62,6 +62,7 @@ Execution cadence:
   - status++: body 捕获采样率、压缩策略与 flow 日志轮转保留已接入
   - status+++: replay 差异报告已升级到 header/body hash
   - status++++: WS API 慢消费者背压阈值（`--api-max-lag`）已接入
+  - status+++++: replay 已支持按 client 的会话式顺序回放（session helpers）
 - Exit criteria:
   - `omni-replay` can replay captured body with deterministic request-id correlation
 

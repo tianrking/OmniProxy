@@ -144,6 +144,8 @@ cargo run --bin omni-replay -- --request-id <id>
 4. `--no-body`
 5. `--dry-run`
 6. `--print-curl`
+7. `--session-client`
+8. `--session-limit`
 
 ### 6.3 差异输出
 

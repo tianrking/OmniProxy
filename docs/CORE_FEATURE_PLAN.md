@@ -54,7 +54,7 @@ Status legend:
 3. Dry-run and cURL export: `DONE`
 4. Request body replay: `DONE`
 5. Replay diff report (status/header/body hash): `DONE`
-6. Stateful session replay helpers: `TODO`
+6. Stateful session replay helpers: `IN_PROGRESS`
 
 ## D. Rule Engine and Traffic Mutation
 

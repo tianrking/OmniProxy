@@ -40,6 +40,12 @@ struct Cli {
 
     #[arg(long, default_value_t = false)]
     no_body: bool,
+
+    #[arg(long)]
+    session_client: Option<String>,
+
+    #[arg(long, default_value_t = 20)]
+    session_limit: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -66,7 +72,7 @@ struct ResponseSnapshot {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let path = expand_home(cli.flow_log);
+    let path = expand_home(cli.flow_log.clone());
     let requests = load_requests(&path)?;
 
     if cli.list {
@@ -81,6 +87,27 @@ async fn main() -> Result<()> {
                 req.timestamp_ms,
             );
         }
+        return Ok(());
+    }
+
+    if let Some(client_key) = &cli.session_client {
+        let selected: Vec<&ReplayCandidate> = requests
+            .iter()
+            .filter(|r| &r.client == client_key)
+            .take(cli.session_limit.max(1))
+            .collect();
+        if selected.is_empty() {
+            bail!("session client '{}' not found", client_key);
+        }
+        println!(
+            "session replay start: client={} count={}",
+            client_key,
+            selected.len()
+        );
+        for req in selected {
+            replay_one(&cli, req).await?;
+        }
+        println!("session replay finished");
         return Ok(());
     }
 
@@ -99,6 +126,10 @@ async fn main() -> Result<()> {
             .with_context(|| format!("index {} not found", idx))?
     };
 
+    replay_one(&cli, candidate).await
+}
+
+async fn replay_one(cli: &Cli, candidate: &ReplayCandidate) -> Result<()> {
     let method = cli
         .method_override
         .as_deref()
@@ -109,17 +140,14 @@ async fn main() -> Result<()> {
         .as_deref()
         .unwrap_or(&candidate.uri)
         .to_string();
-
     if !uri.starts_with("http://") && !uri.starts_with("https://") {
         bail!(
             "URI is not absolute and cannot be replayed directly: {}",
             uri
         );
     }
-
     let method = Method::from_bytes(method.as_bytes())
         .with_context(|| format!("invalid method: {}", method))?;
-
     let headers = build_headers(&candidate.headers, &cli.headers)?;
     let body = if cli.no_body {
         None
@@ -130,7 +158,6 @@ async fn main() -> Result<()> {
     if cli.print_curl || cli.dry_run {
         println!("{}", render_curl(&method.to_string(), &uri, &headers));
     }
-
     if cli.dry_run {
         println!("dry-run enabled, skip actual request");
         return Ok(());
@@ -206,7 +233,6 @@ async fn main() -> Result<()> {
             }
         );
     }
-
     Ok(())
 }
 

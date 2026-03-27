@@ -101,6 +101,7 @@ cargo run --bin omni-replay -- --index 12
 cargo run --bin omni-replay -- --request-id 4d3a... --header "Authorization: Bearer xxx"
 cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
 cargo run --bin omni-replay -- --index 12 --no-body
+cargo run --bin omni-replay -- --session-client 127.0.0.1:54022 --session-limit 10
 ```
 
 Replay output now includes captured-vs-live diff for:
