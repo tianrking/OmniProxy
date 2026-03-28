@@ -22,16 +22,18 @@ Done:
 6. Wasm v1 mutating hooks (request/response mutation payload).
 7. Baseline benchmarks (`omni-bench`, `omni-converge`).
 8. Release hardening baseline (checksums/provenance/signatures).
+9. Cross-platform VPN control-plane boundary with macOS-first implementation (`omni-vpn` list/doctor/up/down/status).
 
 In progress / to close:
-1. True streaming body path for unknown-length sustained traffic.
-2. HTTP/1.1 + HTTP/2 correctness convergence under larger stress matrix.
-3. Wasm ABI compatibility matrix and stronger resource budget metrics.
-4. v1.0 release runbook completion and evidence checklist automation.
+1. True full-tunnel data plane behind the VPN control plane (PacketTunnel/TUN/WFP adapters).
+2. True streaming body path for unknown-length sustained traffic.
+3. HTTP/1.1 + HTTP/2 correctness convergence under larger stress matrix.
+4. Wasm ABI compatibility matrix and stronger resource budget metrics.
+5. v1.0 release runbook completion and evidence checklist automation.
 
 ## 3. Milestones and Iteration Estimate
 
-Planned remaining iterations: **6-8** (if no major architecture reset).
+Planned remaining iterations: **5-7** (if no major architecture reset).
 
 ### M1 (1 iteration): Streaming Stability Finalization
 

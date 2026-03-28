@@ -9,3 +9,4 @@ pub mod query;
 pub mod replay;
 pub mod rules;
 pub mod storage;
+pub mod vpn;

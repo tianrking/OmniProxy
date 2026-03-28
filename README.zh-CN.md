@@ -7,6 +7,8 @@ Usage Cookbook (EN): [docs/USAGE_COOKBOOK.md](./docs/USAGE_COOKBOOK.md)
 使用手册（中文实战）: [docs/USAGE_COOKBOOK.zh-CN.md](./docs/USAGE_COOKBOOK.zh-CN.md)
 Master Plan (EN): [docs/MASTER_PLAN.md](./docs/MASTER_PLAN.md)
 总体规划（中文）: [docs/MASTER_PLAN.zh-CN.md](./docs/MASTER_PLAN.zh-CN.md)
+VPN 架构（英文）: [docs/VPN_ARCHITECTURE.md](./docs/VPN_ARCHITECTURE.md)
+VPN 架构（中文）: [docs/VPN_ARCHITECTURE.zh-CN.md](./docs/VPN_ARCHITECTURE.zh-CN.md)
 
 OmniProxy 是面向现代 API 开发者与安全分析师的高性能 MITM 代理核心，目标是：
 
@@ -122,6 +124,16 @@ cargo run --bin omni-transparent -- down --apply
 
 ```bash
 cargo run --bin omni-stack -- --mode local
+```
+
+macOS 优先的 VPN 控制面（跨平台适配层）：
+
+```bash
+cargo run --bin omni-vpn -- list
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" doctor
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" up
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" status
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" down
 ```
 
 说明：

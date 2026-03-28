@@ -9,6 +9,8 @@ Usage Cookbook (EN): [docs/USAGE_COOKBOOK.md](./docs/USAGE_COOKBOOK.md)
 使用手册（中文实战）: [docs/USAGE_COOKBOOK.zh-CN.md](./docs/USAGE_COOKBOOK.zh-CN.md)
 Master Plan (EN): [docs/MASTER_PLAN.md](./docs/MASTER_PLAN.md)
 总体规划（中文）: [docs/MASTER_PLAN.zh-CN.md](./docs/MASTER_PLAN.zh-CN.md)
+VPN Architecture (EN): [docs/VPN_ARCHITECTURE.md](./docs/VPN_ARCHITECTURE.md)
+VPN 架构（中文）: [docs/VPN_ARCHITECTURE.zh-CN.md](./docs/VPN_ARCHITECTURE.zh-CN.md)
 
 Cross-platform target:
 
@@ -119,6 +121,16 @@ One-command full stack (proxy + transparent + kernel capture):
 
 ```bash
 cargo run --bin omni-stack -- --mode local
+```
+
+macOS-first VPN control plane (cross-platform adapter boundary):
+
+```bash
+cargo run --bin omni-vpn -- list
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" doctor
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" up
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" status
+cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" down
 ```
 
 Note:

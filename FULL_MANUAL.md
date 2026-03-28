@@ -28,12 +28,20 @@ OmniProxy is a modern MITM toolkit with:
 8. `omni-transparent`: transparent HTTP redirect helper (macOS/Linux).
 9. `omni-transparentd`: transparent HTTP/HTTPS forwarder (ports 10080/10443 by default).
 10. `omni-stack`: one-command orchestrator (global + transparent + kernel-capture + cleanup).
+11. `omni-vpn`: VPN control-plane CLI (cross-platform architecture, macOS-first implementation).
 
 `omni-global` platform status:
 1. macOS: auto system proxy set/unset supported.
 2. Linux (GNOME + `gsettings`): auto system proxy set/unset supported.
 3. Windows: manual command hints emitted; adapter architecture already prepared.
 4. Optional kernel capture sidecar: `--kernel-capture` logs tcp/udp metadata stream to `.omni-proxy/kernel_capture.log`.
+
+`omni-vpn` quick flow (macOS-first):
+1. `cargo run --bin omni-vpn -- list`
+2. `cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" doctor`
+3. `cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" up`
+4. `cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" status`
+5. `cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" down`
 
 ## 3. Proxy Core (`omni_proxy`)
 

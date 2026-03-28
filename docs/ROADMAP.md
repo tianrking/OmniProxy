@@ -18,10 +18,10 @@ Detailed master checklist:
 
 ## Iteration Plan
 
-Estimated remaining: **6-8 iterations** to v1.0 baseline closure.
+Estimated remaining: **5-7 iterations** to v1.0 baseline closure.
 
 Execution cadence:
-- Major iterations remaining: `7` (`R2..R8`)
+- Major iterations remaining: `6` (`R3..R8`)
 - Minor commits per major iteration: `2~4`
 - Expected remaining commits: `14~28`
 - Update contract: every feature commit must sync `docs/CORE_FEATURE_PLAN.md` + this roadmap + impacted Chinese doc.
@@ -51,6 +51,12 @@ Execution cadence:
 ### I6 (done)
 - Cross-platform CI baseline (`linux amd64/arm64/arm32`, `windows x64`, `.deb`)
 - CI validation with format/check/test gates
+
+### I6.5 (done)
+- VPN control-plane architecture boundary added (`src/vpn/*`)
+- macOS-first control implementation via `scutil --nc`
+- New operator CLI: `omni-vpn` (`list` / `doctor` / `up` / `down` / `status`)
+- Bilingual VPN architecture docs (`docs/VPN_ARCHITECTURE*.md`)
 
 ### Remaining
 

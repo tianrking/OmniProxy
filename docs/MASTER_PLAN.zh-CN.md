@@ -22,16 +22,18 @@ English Version: [MASTER_PLAN.md](./MASTER_PLAN.md)
 6. Wasm v1 可变更 hook（请求/响应修改载荷）。
 7. 基线压测工具（`omni-bench`、`omni-converge`）。
 8. 发布硬化基线（checksum/provenance/signature）。
+9. 跨平台 VPN 控制面边界已落地，macOS 优先实现（`omni-vpn` list/doctor/up/down/status）。
 
 进行中/待收口：
-1. 未知长度持续流量的真正流式路径收口。
-2. HTTP/1.1 + HTTP/2 在更大压测矩阵下的正确性收敛。
-3. Wasm ABI 兼容矩阵与资源预算指标增强。
-4. v1.0 runbook 最终闭环与证据化检查。
+1. VPN 控制面之后的“真正全隧道数据面”实现（PacketTunnel/TUN/WFP 适配器）。
+2. 未知长度持续流量的真正流式路径收口。
+3. HTTP/1.1 + HTTP/2 在更大压测矩阵下的正确性收敛。
+4. Wasm ABI 兼容矩阵与资源预算指标增强。
+5. v1.0 runbook 最终闭环与证据化检查。
 
 ## 3. 里程碑与迭代评估
 
-预计剩余迭代：**6-8 个版本**（不发生大规模架构重置前提）。
+预计剩余迭代：**5-7 个版本**（不发生大规模架构重置前提）。
 
 ### M1（1 个迭代）：流式稳定性收口
 
