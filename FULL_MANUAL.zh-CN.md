@@ -28,7 +28,8 @@ OmniProxy 提供以下核心能力：
 
 `omni-global` 平台状态：
 1. macOS：已支持自动系统代理接管/恢复。
-2. Windows/Linux：当前输出手动命令提示；平台适配层已预留，后续可直接补自动化实现。
+2. Linux（GNOME + `gsettings`）：已支持自动系统代理接管/恢复。
+3. Windows：当前输出手动命令提示；平台适配层已预留，后续可直接补自动化实现。
 
 ## 3. 核心代理（`omni_proxy`）
 

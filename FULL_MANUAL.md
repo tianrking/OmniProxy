@@ -28,7 +28,8 @@ OmniProxy is a modern MITM toolkit with:
 
 `omni-global` platform status:
 1. macOS: auto system proxy set/unset supported.
-2. Windows/Linux: manual command hints emitted; adapter architecture already prepared.
+2. Linux (GNOME + `gsettings`): auto system proxy set/unset supported.
+3. Windows: manual command hints emitted; adapter architecture already prepared.
 
 ## 3. Proxy Core (`omni_proxy`)
 

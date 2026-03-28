@@ -56,7 +56,44 @@ pub fn set_system_proxy(network_service: &str, host: &str, port: u16) -> Result<
             )?;
             Ok(())
         }
-        PlatformKind::Windows | PlatformKind::Linux | PlatformKind::Other => bail!(
+        PlatformKind::Linux => {
+            if !has_gsettings() {
+                bail!("gsettings not found on linux");
+            }
+            run_cmd(
+                "gsettings",
+                &["set", "org.gnome.system.proxy", "mode", "manual"],
+            )?;
+            run_cmd(
+                "gsettings",
+                &["set", "org.gnome.system.proxy.http", "host", host],
+            )?;
+            run_cmd(
+                "gsettings",
+                &[
+                    "set",
+                    "org.gnome.system.proxy.http",
+                    "port",
+                    &port.to_string(),
+                ],
+            )?;
+            run_cmd(
+                "gsettings",
+                &["set", "org.gnome.system.proxy.https", "host", host],
+            )?;
+            run_cmd(
+                "gsettings",
+                &[
+                    "set",
+                    "org.gnome.system.proxy.https",
+                    "port",
+                    &port.to_string(),
+                ],
+            )?;
+            let _ = network_service;
+            Ok(())
+        }
+        PlatformKind::Windows | PlatformKind::Other => bail!(
             "auto system proxy not implemented for this platform yet. See emitted *_hint lines."
         ),
     }
@@ -75,7 +112,18 @@ pub fn unset_system_proxy(network_service: &str) -> Result<()> {
             )?;
             Ok(())
         }
-        PlatformKind::Windows | PlatformKind::Linux | PlatformKind::Other => bail!(
+        PlatformKind::Linux => {
+            if !has_gsettings() {
+                bail!("gsettings not found on linux");
+            }
+            run_cmd(
+                "gsettings",
+                &["set", "org.gnome.system.proxy", "mode", "none"],
+            )?;
+            let _ = network_service;
+            Ok(())
+        }
+        PlatformKind::Windows | PlatformKind::Other => bail!(
             "auto system proxy reset not implemented for this platform yet. See emitted *_hint lines."
         ),
     }
@@ -90,9 +138,9 @@ pub fn set_proxy_hint(host: &str, port: u16, network_service: &str) -> String {
         PlatformKind::Windows => format!(
             "powershell -Command \"netsh winhttp set proxy proxy-server=\\\"http={host}:{port};https={host}:{port}\\\"\"",
         ),
-        PlatformKind::Linux => {
-            format!("export HTTP_PROXY=http://{host}:{port} HTTPS_PROXY=http://{host}:{port}",)
-        }
+        PlatformKind::Linux => format!(
+            "gsettings set org.gnome.system.proxy mode manual && gsettings set org.gnome.system.proxy.http host '{host}' && gsettings set org.gnome.system.proxy.http port {port} && gsettings set org.gnome.system.proxy.https host '{host}' && gsettings set org.gnome.system.proxy.https port {port}",
+        ),
         PlatformKind::Other => {
             format!("set HTTP(S) proxy manually to {host}:{port} in your OS/network settings")
         }
@@ -106,9 +154,17 @@ pub fn unset_proxy_hint(network_service: &str) -> String {
             svc = network_service
         ),
         PlatformKind::Windows => "powershell -Command \"netsh winhttp reset proxy\"".to_string(),
-        PlatformKind::Linux => "unset HTTP_PROXY HTTPS_PROXY".to_string(),
+        PlatformKind::Linux => "gsettings set org.gnome.system.proxy mode none".to_string(),
         PlatformKind::Other => "clear system proxy manually in OS settings".to_string(),
     }
+}
+
+fn has_gsettings() -> bool {
+    Command::new("gsettings")
+        .arg("--version")
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 fn run_cmd(cmd: &str, args: &[&str]) -> Result<()> {

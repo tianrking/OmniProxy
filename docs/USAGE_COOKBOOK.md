@@ -42,6 +42,9 @@ One-command global helper:
 cargo run --bin omni-global -- --mode local --set-system-proxy
 ```
 
+Linux GNOME one-command capture is the same command above (`gsettings` required).
+If auto setup fails, use printed `set_proxy_hint`.
+
 LAN gateway helper:
 
 ```bash

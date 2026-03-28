@@ -105,7 +105,8 @@ cargo run --bin omni-global -- --mode lan
 
 说明：
 - macOS 已支持自动系统代理接管。
-- Windows/Linux 当前通过 `omni-global` 输出的 `*_hint` 手动执行；平台适配层已经预留，后续可无痛补齐自动化实现。
+- Linux（GNOME + `gsettings`）已支持自动系统代理接管。
+- 若自动接管失败，`omni-global` 会继续运行，并输出 `set_proxy_hint` / `unset_proxy_hint` 供手动执行。
 
 WebSocket 预览截断长度：
 

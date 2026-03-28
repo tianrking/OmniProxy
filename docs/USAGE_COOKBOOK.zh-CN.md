@@ -42,6 +42,9 @@ HTTP_PROXY=http://127.0.0.1:9090 curl http://httpbin.org/get
 cargo run --bin omni-global -- --mode local --set-system-proxy
 ```
 
+Linux GNOME 一键抓包同上（需要 `gsettings`）。
+若自动接管失败，执行输出里的 `set_proxy_hint`。
+
 局域网网关抓包启动：
 
 ```bash

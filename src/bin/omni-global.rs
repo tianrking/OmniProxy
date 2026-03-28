@@ -91,7 +91,8 @@ async fn main() -> Result<()> {
                 "unset_proxy_hint={}",
                 unset_proxy_hint(&cli.network_service)
             );
-            return Err(err);
+            warn!(error = %err, "auto unset system proxy failed");
+            return Ok(());
         }
         println!("system_proxy=disabled");
         return Ok(());
@@ -117,9 +118,10 @@ async fn main() -> Result<()> {
                     &cli.network_service
                 )
             );
-            return Err(err);
+            warn!(error = %err, "auto set system proxy failed, continue with manual mode");
+        } else {
+            println!("system_proxy=enabled");
         }
-        println!("system_proxy=enabled");
     }
 
     print_quick_hints(&cli, listen_addr);
