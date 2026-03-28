@@ -206,7 +206,23 @@ cargo run --bin omni-converge -- --url https://example.com --requests 4000 --con
 2. `http2pref` 模式在高并发下的错误率与延迟。
 3. 收敛信号：多轮执行后错误率低、p95/p99 稳定。
 
-## 8. 后端事件 API
+## 9. 流量分析（`omni-analyze`）
+
+### 9.1 命令
+
+```bash
+cargo run --bin omni-analyze -- --flow-log ~/.omni-proxy/flows.jsonl --top 20 --slow-ms 800
+```
+
+### 9.2 输出内容
+
+1. HTTP 总量与错误率（`>=400`）。
+2. 延迟 p50/p95/p99。
+3. 热点主机、状态码分布、方法分布。
+4. 慢请求排行。
+5. WebSocket 帧数与字节数总计。
+
+## 10. 后端事件 API
 
 订阅方式：
 
@@ -220,7 +236,7 @@ websocat ws://127.0.0.1:9091
 2. `HttpResponse`
 3. `WebSocketFrame`
 
-## 9. CI 与发布
+## 11. CI 与发布
 
 1. CI：`.github/workflows/ci.yml`
 2. 发布：`.github/workflows/release.yml`
@@ -231,12 +247,12 @@ websocat ws://127.0.0.1:9091
    4. `SHA256SUMS.sig`
    5. `SHA256SUMS.pem`
 
-## 10. API 合同参考
+## 12. API 合同参考
 
 1. `docs/API_CONTRACT.md` 定义了后端 `HttpRequest` / `HttpResponse` / `WebSocketFrame` 事件结构。
 2. `docs/RUNBOOK.md` 提供最终收敛与发布检查清单。
 
-## 11. Wasm 可变更 ABI（v1 基线）
+## 13. Wasm 可变更 ABI（v1 基线）
 
 可选导出：
 1. `on_http_request_mut(i32, i32) -> i64`

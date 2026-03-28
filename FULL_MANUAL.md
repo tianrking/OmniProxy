@@ -192,21 +192,37 @@ cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concur
 4. latency average
 5. latency p50/p95/p99
 
-## 8. Convergence Runner (`omni-converge`)
+## 8. Flow Analysis (`omni-analyze`)
 
 ### 8.1 Command
+
+```bash
+cargo run --bin omni-analyze -- --flow-log ~/.omni-proxy/flows.jsonl --top 20 --slow-ms 800
+```
+
+### 8.2 Output
+
+1. total HTTP count and error-rate (`>=400`)
+2. latency p50/p95/p99
+3. top hosts, status distribution, method distribution
+4. slow request ranking
+5. websocket frame/byte totals
+
+## 9. Convergence Runner (`omni-converge`)
+
+### 9.1 Command
 
 ```bash
 cargo run --bin omni-converge -- --url https://example.com --requests 4000 --concurrency 256 --proxy http://127.0.0.1:9090
 ```
 
-### 8.2 What It Validates
+### 9.2 What It Validates
 
 1. `http1` mode error rate and latency under concurrency.
 2. `http2pref` mode error rate and latency under concurrency.
 3. convergence signal: low error-rate and stable p95/p99 across repeated runs.
 
-## 8. API Event Stream
+## 10. API Event Stream
 
 Subscribe:
 
@@ -219,7 +235,7 @@ Event categories:
 2. `HttpResponse`
 3. `WebSocketFrame`
 
-## 9. CI and Release
+## 11. CI and Release
 
 1. CI workflow: `.github/workflows/ci.yml`
 2. Release workflow: `.github/workflows/release.yml`
@@ -230,12 +246,12 @@ Event categories:
    4. `SHA256SUMS.sig`
    5. `SHA256SUMS.pem`
 
-## 10. API Contract Reference
+## 12. API Contract Reference
 
 1. `docs/API_CONTRACT.md` defines the backend event schema for `HttpRequest` / `HttpResponse` / `WebSocketFrame`.
 2. `docs/RUNBOOK.md` provides final convergence and release checklist.
 
-## 11. Wasm Mutating ABI (v1 baseline)
+## 13. Wasm Mutating ABI (v1 baseline)
 
 Optional exports:
 1. `on_http_request_mut(i32, i32) -> i64`

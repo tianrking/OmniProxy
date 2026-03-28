@@ -167,6 +167,13 @@ cargo run --bin omni-bench -- --url https://example.com --requests 2000 --concur
 cargo run --bin omni-converge -- --url https://example.com --requests 4000 --concurrency 256 --proxy http://127.0.0.1:9090
 ```
 
+流量诊断分析：
+
+```bash
+cargo run --bin omni-analyze -- --flow-log ~/.omni-proxy/flows.jsonl --top 20 --slow-ms 800
+cargo run --bin omni-analyze -- --flow-log ./.omni-proxy/flows.jsonl --include-connect
+```
+
 ## CI 与跨平台
 
 当前 CI 覆盖：
