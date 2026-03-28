@@ -115,6 +115,12 @@ cargo run --bin omni-transparentd -- --http-listen 127.0.0.1:10080 --https-liste
 cargo run --bin omni-transparent -- down --apply
 ```
 
+One-command full stack (proxy + transparent + kernel capture):
+
+```bash
+cargo run --bin omni-stack -- --mode local
+```
+
 Note:
 - macOS supports auto system proxy setup now.
 - Linux (GNOME with `gsettings`) supports auto system proxy setup now.

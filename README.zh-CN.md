@@ -118,6 +118,12 @@ cargo run --bin omni-transparentd -- --http-listen 127.0.0.1:10080 --https-liste
 cargo run --bin omni-transparent -- down --apply
 ```
 
+一键全栈（代理 + 透明重定向 + 内核侧车抓包）：
+
+```bash
+cargo run --bin omni-stack -- --mode local
+```
+
 说明：
 - macOS 已支持自动系统代理接管。
 - Linux（GNOME + `gsettings`）已支持自动系统代理接管。
