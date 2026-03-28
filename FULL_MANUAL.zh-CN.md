@@ -48,6 +48,11 @@ OmniProxy 提供以下核心能力：
 1. `cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"`
 2. 从源码目录运行时，若缺少配套二进制，`omni-stack` 会自动补编译。
 
+`omni-run` 指定程序抓取模式：
+1. env 模式：`cargo run --bin omni-run -- --mode env -- curl -k https://httpbin.org/get`
+2. system 模式：`cargo run --bin omni-run -- --mode system -- open -a "Safari"`
+3. socket 侧车：`cargo run --bin omni-run -- --trace-sockets --trace-file .omni-proxy/process_flows.jsonl -- curl -k https://httpbin.org/get`
+
 ## 3. 核心代理（`omni_proxy`）
 
 ### 3.1 启动代理

@@ -9,6 +9,8 @@ Master Plan (EN): [docs/MASTER_PLAN.md](./docs/MASTER_PLAN.md)
 总体规划（中文）: [docs/MASTER_PLAN.zh-CN.md](./docs/MASTER_PLAN.zh-CN.md)
 VPN 架构（英文）: [docs/VPN_ARCHITECTURE.md](./docs/VPN_ARCHITECTURE.md)
 VPN 架构（中文）: [docs/VPN_ARCHITECTURE.zh-CN.md](./docs/VPN_ARCHITECTURE.zh-CN.md)
+抓取定位（英文）: [docs/CAPTURE_POSITIONING.md](./docs/CAPTURE_POSITIONING.md)
+抓取定位（中文）: [docs/CAPTURE_POSITIONING.zh-CN.md](./docs/CAPTURE_POSITIONING.zh-CN.md)
 
 OmniProxy 是面向现代 API 开发者与安全分析师的高性能 MITM 代理核心，目标是：
 
@@ -244,6 +246,10 @@ cargo run --bin omni-analyze -- --flow-log ./.omni-proxy/flows.jsonl --include-c
 ```bash
 # 用注入后的代理环境运行单个程序
 cargo run --bin omni-run -- -- curl -k https://httpbin.org/get
+# 用生命周期托管系统代理运行程序（退出自动回滚）
+cargo run --bin omni-run -- --mode system -- open -a "Safari"
+# 开启进程 socket 时间线侧车
+cargo run --bin omni-run -- --mode env --trace-sockets -- curl -k https://httpbin.org/get
 # 仅预览将注入的参数，不执行
 cargo run --bin omni-run -- --print-only -- curl https://example.com
 ```

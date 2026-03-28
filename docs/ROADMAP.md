@@ -58,6 +58,13 @@ Execution cadence:
 - New operator CLI: `omni-vpn` (`list` / `doctor` / `up` / `down` / `status`)
 - Bilingual VPN architecture docs (`docs/VPN_ARCHITECTURE*.md`)
 
+### I6.6 (done)
+- MITM-first capture positioning finalized (`docs/CAPTURE_POSITIONING*.md`)
+- New targeted launcher `omni-run` with two modes:
+  - `env` mode (per-process proxy env injection)
+  - `system` mode (lifecycle-scoped system-proxy with rollback)
+- Process socket sidecar timeline (`--trace-sockets`, JSONL)
+
 ### Remaining
 
 ### I7

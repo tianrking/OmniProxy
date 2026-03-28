@@ -11,6 +11,8 @@ Master Plan (EN): [docs/MASTER_PLAN.md](./docs/MASTER_PLAN.md)
 总体规划（中文）: [docs/MASTER_PLAN.zh-CN.md](./docs/MASTER_PLAN.zh-CN.md)
 VPN Architecture (EN): [docs/VPN_ARCHITECTURE.md](./docs/VPN_ARCHITECTURE.md)
 VPN 架构（中文）: [docs/VPN_ARCHITECTURE.zh-CN.md](./docs/VPN_ARCHITECTURE.zh-CN.md)
+Capture Positioning (EN): [docs/CAPTURE_POSITIONING.md](./docs/CAPTURE_POSITIONING.md)
+抓取定位（中文）: [docs/CAPTURE_POSITIONING.zh-CN.md](./docs/CAPTURE_POSITIONING.zh-CN.md)
 
 Cross-platform target:
 
@@ -203,6 +205,10 @@ cargo run --bin omni-analyze -- --flow-log ./.omni-proxy/flows.jsonl --include-c
 ```bash
 # run a single command with proxy env injected
 cargo run --bin omni-run -- -- curl -k https://httpbin.org/get
+# run GUI/program with temporary system-proxy lifecycle
+cargo run --bin omni-run -- --mode system -- open -a "Safari"
+# add process socket timeline sidecar
+cargo run --bin omni-run -- --mode env --trace-sockets -- curl -k https://httpbin.org/get
 # preview command/env only
 cargo run --bin omni-run -- --print-only -- curl https://example.com
 ```

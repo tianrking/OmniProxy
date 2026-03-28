@@ -48,6 +48,11 @@ OmniProxy is a modern MITM toolkit with:
 1. `cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"`
 2. when launched from source tree, missing companion binaries are auto-built by `omni-stack`.
 
+`omni-run` targeted capture modes:
+1. env mode: `cargo run --bin omni-run -- --mode env -- curl -k https://httpbin.org/get`
+2. system mode: `cargo run --bin omni-run -- --mode system -- open -a "Safari"`
+3. deep socket sidecar: `cargo run --bin omni-run -- --trace-sockets --trace-file .omni-proxy/process_flows.jsonl -- curl -k https://httpbin.org/get`
+
 ## 3. Proxy Core (`omni_proxy`)
 
 ### 3.1 Start Proxy
