@@ -32,6 +32,12 @@ struct Cli {
     #[arg(long, default_value_t = true)]
     kernel_capture: bool,
 
+    #[arg(long, default_value_t = false)]
+    vpn: bool,
+
+    #[arg(long, default_value = "OmniProxy VPN")]
+    vpn_service_name: String,
+
     #[arg(long, default_value = "info")]
     log_level: String,
 }
@@ -52,9 +58,26 @@ async fn main() -> Result<()> {
     let omni_global = bin_path(&bin_dir, "omni-global");
     let omni_transparent = bin_path(&bin_dir, "omni-transparent");
     let omni_transparentd = bin_path(&bin_dir, "omni-transparentd");
+    let omni_vpn = bin_path(&bin_dir, "omni-vpn");
 
     if !omni_global.exists() {
         bail!("missing binary: {}", omni_global.display());
+    }
+    if cli.vpn {
+        ensure_exec(&omni_vpn)?;
+        let doctor_args = vec![
+            "--service-name".to_string(),
+            cli.vpn_service_name.clone(),
+            "doctor".to_string(),
+        ];
+        run_once_owned(&omni_vpn, doctor_args).await?;
+
+        let up_args = vec![
+            "--service-name".to_string(),
+            cli.vpn_service_name.clone(),
+            "up".to_string(),
+        ];
+        run_once_owned(&omni_vpn, up_args).await?;
     }
 
     let mut transparentd_child: Option<Child> = None;
@@ -109,6 +132,7 @@ async fn main() -> Result<()> {
     println!("system_proxy={}", cli.system_proxy);
     println!("transparent={}", cli.transparent);
     println!("kernel_capture={}", cli.kernel_capture);
+    println!("vpn={}", cli.vpn);
     println!("stop=Ctrl+C");
 
     tokio::signal::ctrl_c().await?;
@@ -144,6 +168,17 @@ async fn main() -> Result<()> {
                 "--unset-system-proxy",
                 "--network-service",
                 &cli.network_service,
+            ],
+        )
+        .await;
+    }
+    if cli.vpn {
+        let _ = run_once_owned(
+            &omni_vpn,
+            vec![
+                "--service-name".to_string(),
+                cli.vpn_service_name.clone(),
+                "down".to_string(),
             ],
         )
         .await;
@@ -187,6 +222,19 @@ async fn run_once(bin: &Path, args: &[&str]) -> Result<()> {
         .with_context(|| format!("run {} {}", bin.display(), args.join(" ")))?;
     if !status.success() {
         bail!("command failed: {} {}", bin.display(), args.join(" "));
+    }
+    Ok(())
+}
+
+async fn run_once_owned(bin: &Path, args: Vec<String>) -> Result<()> {
+    let display = args.join(" ");
+    let status = Command::new(bin)
+        .args(args)
+        .status()
+        .await
+        .with_context(|| format!("run {} {}", bin.display(), display))?;
+    if !status.success() {
+        bail!("command failed: {} {}", bin.display(), display);
     }
     Ok(())
 }

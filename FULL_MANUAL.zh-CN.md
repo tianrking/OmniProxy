@@ -43,6 +43,9 @@ OmniProxy 提供以下核心能力：
 4. `cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" status`
 5. `cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" down`
 
+`omni-stack` 已支持把 VPN 控制面编排进一条命令：
+1. `cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"`
+
 ## 3. 核心代理（`omni_proxy`）
 
 ### 3.1 启动代理

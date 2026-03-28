@@ -121,6 +121,8 @@ One-command full stack (proxy + transparent + kernel capture):
 
 ```bash
 cargo run --bin omni-stack -- --mode local
+# include macOS VPN control plane (requires existing VPN service/profile)
+cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"
 ```
 
 macOS-first VPN control plane (cross-platform adapter boundary):

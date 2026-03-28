@@ -42,6 +42,8 @@ macOS、Linux、Windows 的 VPN 机制本质不同：
 
 当前价值：先把“可控、可诊断”的控制面稳定下来，再持续补齐 PacketTunnel 数据面。
 
+`omni-stack` 已支持 `--vpn --vpn-service-name <name>`，可把 VPN 控制面并入一键编排流程。
+
 ## 5. 下一步（macOS）
 
 1. 加入 `PacketTunnelProvider` 工程骨架与签名流程

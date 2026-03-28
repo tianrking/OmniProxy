@@ -38,8 +38,11 @@ Contract:
 2. `omni-vpn down`
 3. `omni-vpn status`
 4. `omni-vpn prepare` (prints PacketTunnel requirements)
+5. `omni-vpn list` / `omni-vpn doctor` for operator diagnostics
 
 This gives a stable control facade now, while PacketTunnel runtime is completed next.
+
+`omni-stack` now accepts `--vpn --vpn-service-name <name>` to orchestrate VPN control in the one-command workflow.
 
 ## 5. Next macOS Milestones
 

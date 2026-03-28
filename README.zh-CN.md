@@ -124,6 +124,8 @@ cargo run --bin omni-transparent -- down --apply
 
 ```bash
 cargo run --bin omni-stack -- --mode local
+# 叠加 macOS VPN 控制面（需提前存在 VPN 服务/配置）
+cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"
 ```
 
 macOS 优先的 VPN 控制面（跨平台适配层）：
