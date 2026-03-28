@@ -24,6 +24,7 @@ OmniProxy 提供以下核心能力：
 4. `omni-bench`：基准压测工具。
 5. `omni-converge`：协议正确性收敛压测。
 6. `omni-analyze`：离线流量诊断与热点分析。
+7. `omni-global`：一键全局/网关抓包启动器。
 
 ## 3. 核心代理（`omni_proxy`）
 

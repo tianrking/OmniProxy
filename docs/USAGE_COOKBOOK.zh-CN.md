@@ -36,6 +36,18 @@ HTTPS_PROXY=http://127.0.0.1:9090 curl -k https://httpbin.org/get
 HTTP_PROXY=http://127.0.0.1:9090 curl http://httpbin.org/get
 ```
 
+一键全局抓包启动：
+
+```bash
+cargo run --bin omni-global -- --mode local --set-system-proxy
+```
+
+局域网网关抓包启动：
+
+```bash
+cargo run --bin omni-global -- --mode lan
+```
+
 ## 3. TUI 分析流程
 
 1. `j/k` 选中业务请求行（`GET/POST...`）。

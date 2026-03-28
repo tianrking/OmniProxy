@@ -36,6 +36,18 @@ HTTPS_PROXY=http://127.0.0.1:9090 curl -k https://httpbin.org/get
 HTTP_PROXY=http://127.0.0.1:9090 curl http://httpbin.org/get
 ```
 
+One-command global helper:
+
+```bash
+cargo run --bin omni-global -- --mode local --set-system-proxy
+```
+
+LAN gateway helper:
+
+```bash
+cargo run --bin omni-global -- --mode lan
+```
+
 ## 3. TUI Analysis Workflow
 
 1. Use `j/k` to select business request rows (`GET/POST...`).

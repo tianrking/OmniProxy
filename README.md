@@ -89,6 +89,17 @@ WebSocket active mutation controls:
 cargo run --bin omni-tui -- --api ws://127.0.0.1:9091/ws
 ```
 
+Global-capture helper (one command, real-world workflow):
+
+```bash
+# local machine global capture (macOS auto system proxy optional)
+cargo run --bin omni-global -- --mode local --set-system-proxy
+# restore system proxy
+cargo run --bin omni-global -- --unset-system-proxy
+# LAN gateway mode for other devices
+cargo run --bin omni-global -- --mode lan
+```
+
 6. Flow persistence (JSONL) is on by default:
 
 - `~/.omni-proxy/flows.jsonl`

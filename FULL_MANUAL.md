@@ -24,6 +24,7 @@ OmniProxy is a modern MITM toolkit with:
 4. `omni-bench`: benchmark helper.
 5. `omni-converge`: protocol correctness convergence runner.
 6. `omni-analyze`: offline flow diagnostics and hotspot analysis.
+7. `omni-global`: one-command global/lan capture bootstrap helper.
 
 ## 3. Proxy Core (`omni_proxy`)
 

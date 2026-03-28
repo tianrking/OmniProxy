@@ -39,6 +39,7 @@ Scope:
 1. unknown-length body streaming policy refinement.
 2. slow-consumer backpressure behavior tests.
 3. memory envelope checks under sustained large payload.
+4. global-capture adapter track: system-proxy one-command hardening now, transparent TUN adapter design/prototype.
 
 Acceptance:
 1. no OOM/leak on 30+ min sustained stream test.

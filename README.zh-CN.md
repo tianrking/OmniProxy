@@ -92,6 +92,17 @@ websocat ws://127.0.0.1:9091
 cargo run --bin omni-tui -- --api ws://127.0.0.1:9091/ws
 ```
 
+一键全局抓包入口（真实场景）：
+
+```bash
+# 本机全局抓包（macOS 可自动设置系统代理）
+cargo run --bin omni-global -- --mode local --set-system-proxy
+# 关闭系统代理恢复
+cargo run --bin omni-global -- --unset-system-proxy
+# 局域网网关模式（让其他设备走这台机器）
+cargo run --bin omni-global -- --mode lan
+```
+
 WebSocket 预览截断长度：
 
 ```bash
