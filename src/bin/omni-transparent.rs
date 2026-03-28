@@ -32,6 +32,12 @@ struct Cli {
     #[arg(long, default_value_t = 9090)]
     proxy_port: u16,
 
+    #[arg(long, default_value_t = 10080)]
+    transparent_http_port: u16,
+
+    #[arg(long, default_value_t = 10443)]
+    transparent_https_port: u16,
+
     #[arg(long, default_value = "en0")]
     interface: String,
 
@@ -118,8 +124,8 @@ fn run_step(step: &Step) -> Result<()> {
 
 fn build_macos_up(cli: &Cli) -> Vec<Step> {
     let rule = format!(
-        "rdr pass on {} inet proto tcp from any to any port 80 -> 127.0.0.1 port {}",
-        cli.interface, cli.proxy_port
+        "rdr pass on {} inet proto tcp from any to any port 80 -> 127.0.0.1 port {}\\nrdr pass on {} inet proto tcp from any to any port 443 -> 127.0.0.1 port {}",
+        cli.interface, cli.transparent_http_port, cli.interface, cli.transparent_https_port
     );
     vec![
         Step::new(
@@ -174,45 +180,85 @@ fn build_macos_status() -> Vec<Step> {
 }
 
 fn build_linux_up(cli: &Cli) -> Vec<Step> {
-    vec![Step::new(
-        "sudo",
-        vec![
-            "iptables".into(),
-            "-t".into(),
-            "nat".into(),
-            "-A".into(),
-            "OUTPUT".into(),
-            "-p".into(),
-            "tcp".into(),
-            "--dport".into(),
-            "80".into(),
-            "-j".into(),
-            "REDIRECT".into(),
-            "--to-ports".into(),
-            cli.proxy_port.to_string(),
-        ],
-    )]
+    vec![
+        Step::new(
+            "sudo",
+            vec![
+                "iptables".into(),
+                "-t".into(),
+                "nat".into(),
+                "-A".into(),
+                "OUTPUT".into(),
+                "-p".into(),
+                "tcp".into(),
+                "--dport".into(),
+                "80".into(),
+                "-j".into(),
+                "REDIRECT".into(),
+                "--to-ports".into(),
+                cli.transparent_http_port.to_string(),
+            ],
+        ),
+        Step::new(
+            "sudo",
+            vec![
+                "iptables".into(),
+                "-t".into(),
+                "nat".into(),
+                "-A".into(),
+                "OUTPUT".into(),
+                "-p".into(),
+                "tcp".into(),
+                "--dport".into(),
+                "443".into(),
+                "-j".into(),
+                "REDIRECT".into(),
+                "--to-ports".into(),
+                cli.transparent_https_port.to_string(),
+            ],
+        ),
+    ]
 }
 
 fn build_linux_down(cli: &Cli) -> Vec<Step> {
-    vec![Step::new(
-        "sudo",
-        vec![
-            "iptables".into(),
-            "-t".into(),
-            "nat".into(),
-            "-D".into(),
-            "OUTPUT".into(),
-            "-p".into(),
-            "tcp".into(),
-            "--dport".into(),
-            "80".into(),
-            "-j".into(),
-            "REDIRECT".into(),
-            "--to-ports".into(),
-            cli.proxy_port.to_string(),
-        ],
-    )]
+    vec![
+        Step::new(
+            "sudo",
+            vec![
+                "iptables".into(),
+                "-t".into(),
+                "nat".into(),
+                "-D".into(),
+                "OUTPUT".into(),
+                "-p".into(),
+                "tcp".into(),
+                "--dport".into(),
+                "80".into(),
+                "-j".into(),
+                "REDIRECT".into(),
+                "--to-ports".into(),
+                cli.transparent_http_port.to_string(),
+            ],
+        ),
+        Step::new(
+            "sudo",
+            vec![
+                "iptables".into(),
+                "-t".into(),
+                "nat".into(),
+                "-D".into(),
+                "OUTPUT".into(),
+                "-p".into(),
+                "tcp".into(),
+                "--dport".into(),
+                "443".into(),
+                "-j".into(),
+                "REDIRECT".into(),
+                "--to-ports".into(),
+                cli.transparent_https_port.to_string(),
+            ],
+        ),
+    ]
 }
 
 fn build_linux_status() -> Vec<Step> {

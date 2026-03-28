@@ -26,6 +26,7 @@ OmniProxy is a modern MITM toolkit with:
 6. `omni-analyze`: offline flow diagnostics and hotspot analysis.
 7. `omni-global`: one-command global/lan capture bootstrap helper.
 8. `omni-transparent`: transparent HTTP redirect helper (macOS/Linux).
+9. `omni-transparentd`: transparent HTTP/HTTPS forwarder (ports 10080/10443 by default).
 
 `omni-global` platform status:
 1. macOS: auto system proxy set/unset supported.

@@ -112,6 +112,8 @@ cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 cargo run --bin omni-transparent -- up
 # 真正应用规则（需要 sudo 权限）
 cargo run --bin omni-transparent -- up --apply
+# 启动透明守护进程（处理 80/443）
+cargo run --bin omni-transparentd -- --http-listen 127.0.0.1:10080 --https-listen 127.0.0.1:10443
 # 清理规则
 cargo run --bin omni-transparent -- down --apply
 ```

@@ -22,10 +22,13 @@ serde_json = "1.0"
 sha2 = "0.10"
 tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "signal", "fs", "sync", "net", "time", "process"] }
 tokio-tungstenite = "0.28"
+tokio-native-tls = "0.3"
+tokio-rustls = "0.26"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 uuid = { version = "1.18", features = ["v4", "serde"] }
 wasmtime = { version = "38", default-features = false, features = ["cranelift", "runtime"] }
+native-tls = "0.2"
 
 [profile.release]
 lto = true

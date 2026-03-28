@@ -52,6 +52,22 @@ cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 tail -f ./.omni-proxy/kernel_capture.log
 ```
 
+透明 HTTP+HTTPS 重定向流程：
+
+```bash
+# 1) 启动透明守护进程
+cargo run --bin omni-transparentd -- --http-listen 127.0.0.1:10080 --https-listen 127.0.0.1:10443
+
+# 2) 应用重定向规则（新终端）
+cargo run --bin omni-transparent -- up --apply
+
+# 3) 查看规则状态
+cargo run --bin omni-transparent -- status
+
+# 4) 结束后清理规则
+cargo run --bin omni-transparent -- down --apply
+```
+
 局域网网关抓包启动：
 
 ```bash

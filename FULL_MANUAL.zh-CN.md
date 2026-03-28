@@ -26,6 +26,7 @@ OmniProxy 提供以下核心能力：
 6. `omni-analyze`：离线流量诊断与热点分析。
 7. `omni-global`：一键全局/网关抓包启动器。
 8. `omni-transparent`：透明 HTTP 重定向辅助（macOS/Linux）。
+9. `omni-transparentd`：透明 HTTP/HTTPS 转发守护进程（默认 10080/10443）。
 
 `omni-global` 平台状态：
 1. macOS：已支持自动系统代理接管/恢复。

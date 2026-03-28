@@ -52,6 +52,22 @@ cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 tail -f ./.omni-proxy/kernel_capture.log
 ```
 
+Transparent HTTP+HTTPS redirect workflow:
+
+```bash
+# 1) start transparent daemon
+cargo run --bin omni-transparentd -- --http-listen 127.0.0.1:10080 --https-listen 127.0.0.1:10443
+
+# 2) apply redirect rules (new terminal)
+cargo run --bin omni-transparent -- up --apply
+
+# 3) check rules
+cargo run --bin omni-transparent -- status
+
+# 4) remove rules when done
+cargo run --bin omni-transparent -- down --apply
+```
+
 LAN gateway helper:
 
 ```bash

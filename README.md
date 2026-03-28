@@ -109,6 +109,8 @@ Transparent redirect helper (HTTP first-cut):
 cargo run --bin omni-transparent -- up
 # apply rules (needs sudo privileges)
 cargo run --bin omni-transparent -- up --apply
+# start transparent daemon for 80/443
+cargo run --bin omni-transparentd -- --http-listen 127.0.0.1:10080 --https-listen 127.0.0.1:10443
 # remove rules
 cargo run --bin omni-transparent -- down --apply
 ```
