@@ -104,6 +104,17 @@ HTTPS_PROXY=http://127.0.0.1:9090 curl -k https://httpbin.org/status/200 -i
 ./target/release/omni-replay --flow-log ./.omni-proxy/flows.jsonl --session-client 127.0.0.1:54022 --session-limit 10
 ```
 
+时间窗批量重访：
+
+```bash
+./target/release/omni-replay --flow-log ./.omni-proxy/flows.jsonl \
+  --exclude-connect \
+  --since-ms 1774671000000 \
+  --until-ms 1774672000000 \
+  --batch-limit 20 \
+  --dry-run --print-curl
+```
+
 ## 6. 离线流量分析
 
 ```bash

@@ -293,7 +293,10 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
                 "ResCapture: {}",
                 flow.res_capture_reason.as_deref().unwrap_or("-")
             )),
-            Line::from(format!("WS Frames/Bytes: {}/{}", flow.ws_frames, flow.ws_bytes)),
+            Line::from(format!(
+                "WS Frames/Bytes: {}/{}",
+                flow.ws_frames, flow.ws_bytes
+            )),
         ]
     } else {
         vec![Line::from("No flow selected")]
@@ -475,7 +478,9 @@ impl App {
                 }
             }
             UiEvent::Api(ApiEvent::WebSocketFrame {
-                client, payload_len, ..
+                client,
+                payload_len,
+                ..
             }) => {
                 self.ws_frames_total = self.ws_frames_total.saturating_add(1);
                 self.ws_bytes_total = self.ws_bytes_total.saturating_add(payload_len);
@@ -608,7 +613,11 @@ impl App {
             InputMode::Normal => "NORMAL",
             InputMode::Filter => "FILTER",
         };
-        let ws = if self.ws_connected { "ws=up" } else { "ws=down" };
+        let ws = if self.ws_connected {
+            "ws=up"
+        } else {
+            "ws=down"
+        };
         let connect = if self.hide_connect {
             "connect=hidden"
         } else {

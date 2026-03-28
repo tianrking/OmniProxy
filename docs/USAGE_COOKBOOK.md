@@ -104,6 +104,17 @@ Session replay:
 ./target/release/omni-replay --flow-log ./.omni-proxy/flows.jsonl --session-client 127.0.0.1:54022 --session-limit 10
 ```
 
+Time-window batch revisit:
+
+```bash
+./target/release/omni-replay --flow-log ./.omni-proxy/flows.jsonl \
+  --exclude-connect \
+  --since-ms 1774671000000 \
+  --until-ms 1774672000000 \
+  --batch-limit 20 \
+  --dry-run --print-curl
+```
+
 ## 6. Offline Flow Analysis
 
 ```bash

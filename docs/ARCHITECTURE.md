@@ -56,6 +56,11 @@ OmniProxy combines these into a core-first architecture:
 - `src/query/mod.rs`
   - declarative filter DSL parser/evaluator core
 
+- `src/replay/mod.rs`
+  - replay-domain model (`ReplayCandidate`)
+  - persisted flow loading and request-response correlation
+  - shared base for CLI/TUI/API replay workflows
+
 - `src/storage/mod.rs`
   - async JSONL flow persistence for replay/analytics foundations
 
@@ -69,20 +74,11 @@ OmniProxy combines these into a core-first architecture:
 
 This gives deterministic behavior and predictable composition.
 
-## 5. Wasm Hook Model (v0)
+## 5. Wasm Hook Model (v1 baseline)
 
 - Hook payload: JSON snapshot of request/response metadata.
-- ABI contracts are minimal but strict (`memory/alloc/dealloc`).
-- Non-zero return codes are treated as soft policy signals and logged.
-
-Planned next:
-
-- mutation channel for headers/body
-- deny/allow enforcement semantics
-- shared plugin state and precompiled module cache
-- plugin resource limits
-
-Already implemented in this phase:
+- Mutating exports now supported for request/response.
+- ABI contracts remain strict (`memory/alloc/dealloc`, pointer-length payload convention).
 
 - per-plugin timeout execution (`--wasm-timeout-ms`)
 - plugin failures are isolated and do not terminate proxy core
@@ -91,6 +87,7 @@ Already implemented in this phase:
 
 OmniProxy exposes a WebSocket event API (`--api-listen`, default `127.0.0.1:9091`).
 Request/response metadata can be consumed by external TUI or Web UI clients.
+Default runtime path for subscription is `ws://127.0.0.1:9091/ws`.
 
 ## 7. Next Milestones
 

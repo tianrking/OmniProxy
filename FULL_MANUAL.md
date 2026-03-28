@@ -163,6 +163,11 @@ cargo run --bin omni-replay -- --request-id <id>
 11. `--print-curl`
 12. `--session-client`
 13. `--session-limit`
+14. `--client`
+15. `--since-ms`
+16. `--until-ms`
+17. `--exclude-connect`
+18. `--batch-limit`
 
 ### 6.3 Replay Edit Examples
 
@@ -170,6 +175,7 @@ cargo run --bin omni-replay -- --request-id <id>
 cargo run --bin omni-replay -- --index 12 --drop-header Cookie --query trace_id=dev --body-text '{"debug":true}'
 cargo run --bin omni-replay -- --request-id <id> --body-file ./payload.json --print-curl
 cargo run --bin omni-replay -- --index 12 --interactive --print-curl
+cargo run --bin omni-replay -- --exclude-connect --since-ms 1774671000000 --until-ms 1774672000000 --batch-limit 20 --dry-run
 ```
 
 ### 6.4 Diff Output

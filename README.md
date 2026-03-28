@@ -109,6 +109,7 @@ cargo run --bin omni-replay -- --index 12 --no-body
 cargo run --bin omni-replay -- --session-client 127.0.0.1:54022 --session-limit 10
 cargo run --bin omni-replay -- --index 12 --drop-header Cookie --query trace_id=dev --body-text '{"debug":true}'
 cargo run --bin omni-replay -- --index 12 --interactive --print-curl
+cargo run --bin omni-replay -- --exclude-connect --since-ms 1774671000000 --until-ms 1774672000000 --batch-limit 20 --dry-run
 ```
 
 Replay output now includes captured-vs-live diff for:

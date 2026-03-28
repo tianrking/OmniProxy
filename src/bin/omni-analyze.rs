@@ -5,7 +5,10 @@ use std::collections::{HashMap, VecDeque};
 use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
 
 #[derive(Debug, Parser)]
-#[command(name = "omni-analyze", about = "Analyze OmniProxy flow logs for diagnostics")]
+#[command(
+    name = "omni-analyze",
+    about = "Analyze OmniProxy flow logs for diagnostics"
+)]
 struct Cli {
     #[arg(long, default_value = "~/.omni-proxy/flows.jsonl")]
     flow_log: PathBuf,
@@ -94,7 +97,11 @@ fn main() -> Result<()> {
                 let pending = request_id
                     .as_deref()
                     .and_then(|id| req_by_id.remove(id))
-                    .or_else(|| req_queue_by_client.get_mut(&client).and_then(|q| q.pop_front()));
+                    .or_else(|| {
+                        req_queue_by_client
+                            .get_mut(&client)
+                            .and_then(|q| q.pop_front())
+                    });
 
                 if let Some(p) = pending {
                     let req_ts = p.req_ts;
@@ -222,7 +229,10 @@ fn percentile(sorted: &[u64], p: f64) -> u64 {
     sorted[idx.min(sorted.len() - 1)]
 }
 
-fn top_k<K: Ord + Clone + std::hash::Hash + Eq>(map: HashMap<K, usize>, k: usize) -> Vec<(K, usize)> {
+fn top_k<K: Ord + Clone + std::hash::Hash + Eq>(
+    map: HashMap<K, usize>,
+    k: usize,
+) -> Vec<(K, usize)> {
     let mut v: Vec<(K, usize)> = map.into_iter().collect();
     v.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     v.into_iter().take(k.max(1)).collect()

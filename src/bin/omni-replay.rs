@@ -1,16 +1,10 @@
 use anyhow::{Context, Result, bail};
-use base64::Engine as _;
 use clap::Parser;
-use omni_proxy::api::ApiEvent;
+use omni_proxy::replay::{ReplayCandidate, expand_home, load_requests};
 use reqwest::Method;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use sha2::{Digest, Sha256};
-use std::collections::{HashMap, VecDeque};
-use std::{
-    fs::File,
-    io::{BufRead, BufReader, Write},
-    path::PathBuf,
-};
+use std::{io::Write, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(name = "omni-replay", about = "Replay flows from OmniProxy JSONL logs")]
@@ -65,27 +59,21 @@ struct Cli {
 
     #[arg(long, default_value_t = 20)]
     session_limit: usize,
-}
 
-#[derive(Debug, Clone)]
-struct ReplayCandidate {
-    index: usize,
-    timestamp_ms: u64,
-    request_id: Option<String>,
-    client: String,
-    method: String,
-    uri: String,
-    headers: Vec<(String, String)>,
-    body: Option<Vec<u8>>,
-    captured_response: Option<ResponseSnapshot>,
-}
+    #[arg(long)]
+    client: Option<String>,
 
-#[derive(Debug, Clone)]
-struct ResponseSnapshot {
-    status: u16,
-    body_size: Option<usize>,
-    headers_hash: String,
-    body_hash: Option<String>,
+    #[arg(long)]
+    since_ms: Option<u64>,
+
+    #[arg(long)]
+    until_ms: Option<u64>,
+
+    #[arg(long, default_value_t = false)]
+    exclude_connect: bool,
+
+    #[arg(long, default_value_t = 20)]
+    batch_limit: usize,
 }
 
 #[tokio::main]
@@ -93,9 +81,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let path = expand_home(cli.flow_log.clone());
     let requests = load_requests(&path)?;
+    let filtered = filtered_candidates(&cli, &requests);
 
     if cli.list {
-        for req in &requests {
+        for req in filtered {
             println!(
                 "#{:04}  {:6}  {}  ({})  req_id={}  ts={}",
                 req.index,
@@ -110,8 +99,8 @@ async fn main() -> Result<()> {
     }
 
     if let Some(client_key) = &cli.session_client {
-        let selected: Vec<&ReplayCandidate> = requests
-            .iter()
+        let selected: Vec<&ReplayCandidate> = filtered_candidates(&cli, &requests)
+            .into_iter()
             .filter(|r| &r.client == client_key)
             .take(cli.session_limit.max(1))
             .collect();
@@ -130,22 +119,38 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let candidate = if let Some(request_id) = &cli.request_id {
-        requests
+    if let Some(request_id) = &cli.request_id {
+        let candidate = requests
             .iter()
             .find(|x| x.request_id.as_deref() == Some(request_id.as_str()))
-            .with_context(|| format!("request_id {} not found", request_id))?
-    } else {
-        let idx = cli
-            .index
-            .context("please pass --index N, --request-id, or use --list")?;
-        requests
+            .with_context(|| format!("request_id {} not found", request_id))?;
+        return replay_one(&cli, candidate).await;
+    }
+
+    if let Some(idx) = cli.index {
+        let candidate = requests
             .iter()
             .find(|x| x.index == idx)
-            .with_context(|| format!("index {} not found", idx))?
-    };
+            .with_context(|| format!("index {} not found", idx))?;
+        return replay_one(&cli, candidate).await;
+    }
 
-    replay_one(&cli, candidate).await
+    let selected: Vec<&ReplayCandidate> = filtered_candidates(&cli, &requests)
+        .into_iter()
+        .take(cli.batch_limit.max(1))
+        .collect();
+    if selected.is_empty() {
+        bail!(
+            "no candidate found. try --list or relax filters (client/since-ms/until-ms/exclude-connect)"
+        );
+    }
+
+    println!("batch replay start: count={}", selected.len());
+    for req in selected {
+        replay_one(&cli, req).await?;
+    }
+    println!("batch replay finished");
+    Ok(())
 }
 
 async fn replay_one(cli: &Cli, candidate: &ReplayCandidate) -> Result<()> {
@@ -286,105 +291,31 @@ fn resolve_body(cli: &Cli, candidate: &ReplayCandidate) -> Result<Option<Vec<u8>
     Ok(candidate.body.clone())
 }
 
-fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
-    let file = File::open(path).with_context(|| format!("open flow log {}", path.display()))?;
-    let reader = BufReader::new(file);
-    let mut out = Vec::new();
-    let mut req_index_by_request_id: HashMap<String, usize> = HashMap::new();
-    let mut req_indexes_by_client: HashMap<String, VecDeque<usize>> = HashMap::new();
-
-    for (i, line) in reader.lines().enumerate() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let event: ApiEvent = match serde_json::from_str(&line) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-
-        match event {
-            ApiEvent::HttpRequest {
-                timestamp_ms,
-                request_id,
-                client,
-                method,
-                uri,
-                headers,
-                body_b64,
-                ..
-            } => {
-                let body = body_b64
-                    .as_deref()
-                    .and_then(|v| base64::engine::general_purpose::STANDARD.decode(v).ok());
-                out.push(ReplayCandidate {
-                    index: i,
-                    timestamp_ms,
-                    request_id: request_id.clone(),
-                    client: client.clone(),
-                    method,
-                    uri,
-                    headers,
-                    body,
-                    captured_response: None,
-                });
-                let idx = out.len() - 1;
-                if let Some(req_id) = request_id {
-                    req_index_by_request_id.insert(req_id, idx);
-                }
-                req_indexes_by_client
-                    .entry(client)
-                    .or_default()
-                    .push_back(idx);
+fn filtered_candidates<'a>(cli: &Cli, requests: &'a [ReplayCandidate]) -> Vec<&'a ReplayCandidate> {
+    requests
+        .iter()
+        .filter(|r| {
+            if let Some(client) = &cli.client
+                && &r.client != client
+            {
+                return false;
             }
-            ApiEvent::HttpResponse {
-                request_id,
-                client,
-                status,
-                headers,
-                body_b64,
-                body_size,
-                ..
-            } => {
-                let target = request_id
-                    .as_deref()
-                    .and_then(|id| req_index_by_request_id.get(id).copied())
-                    .or_else(|| {
-                        req_indexes_by_client
-                            .get_mut(&client)
-                            .and_then(|q| q.pop_front())
-                    });
-                if let Some(idx) = target {
-                    if let Some(req) = out.get_mut(idx) {
-                        let normalized_headers = normalize_headers(headers);
-                        let body_hash = body_b64
-                            .as_deref()
-                            .and_then(|v| base64::engine::general_purpose::STANDARD.decode(v).ok())
-                            .map(|v| hash_bytes(&v));
-                        req.captured_response = Some(ResponseSnapshot {
-                            status,
-                            body_size,
-                            headers_hash: hash_headers(&normalized_headers),
-                            body_hash,
-                        });
-                    }
-                }
+            if let Some(since) = cli.since_ms
+                && r.timestamp_ms < since
+            {
+                return false;
             }
-            ApiEvent::WebSocketFrame { .. } => {}
-        }
-    }
-
-    Ok(out)
-}
-
-fn expand_home(path: PathBuf) -> PathBuf {
-    let s = path.to_string_lossy();
-    if let Some(stripped) = s.strip_prefix("~/") {
-        if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home).join(stripped);
-        }
-    }
-    path
+            if let Some(until) = cli.until_ms
+                && r.timestamp_ms > until
+            {
+                return false;
+            }
+            if cli.exclude_connect && r.method.eq_ignore_ascii_case("CONNECT") {
+                return false;
+            }
+            true
+        })
+        .collect()
 }
 
 fn build_headers(
@@ -563,10 +494,10 @@ fn interactive_edit(
             let p = prompt("body file path")?;
             if !p.trim().is_empty() {
                 let file = expand_home(PathBuf::from(p.trim()));
-                *body = Some(
-                    std::fs::read(&file)
-                        .with_context(|| format!("read interactive body file {}", file.display()))?,
-                );
+                *body =
+                    Some(std::fs::read(&file).with_context(|| {
+                        format!("read interactive body file {}", file.display())
+                    })?);
             }
         }
         other => {
