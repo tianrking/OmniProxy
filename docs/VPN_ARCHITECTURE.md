@@ -37,7 +37,7 @@ Contract:
 1. `omni-vpn up`
 2. `omni-vpn down`
 3. `omni-vpn status`
-4. `omni-vpn prepare` (prints PacketTunnel requirements)
+4. `omni-vpn prepare` (generates PacketTunnel template files)
 5. `omni-vpn list` / `omni-vpn doctor` for operator diagnostics
 
 This gives a stable control facade now, while PacketTunnel runtime is completed next.

@@ -39,6 +39,7 @@ macOS、Linux、Windows 的 VPN 机制本质不同：
 3. `omni-vpn up`
 4. `omni-vpn status`
 5. `omni-vpn down`
+6. `omni-vpn prepare`（生成 PacketTunnel 模板文件）
 
 当前价值：先把“可控、可诊断”的控制面稳定下来，再持续补齐 PacketTunnel 数据面。
 
