@@ -1,13 +1,15 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use omni_proxy::{
     cert::load_or_init_issuer,
     config::{AppConfig, Cli as CoreCli},
+    platform::system_proxy::{
+        platform_name, set_proxy_hint, set_system_proxy, unset_proxy_hint, unset_system_proxy,
+    },
     proxy,
 };
 use std::net::{SocketAddr, UdpSocket};
 use std::path::PathBuf;
-use std::process::Command;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -83,7 +85,14 @@ async fn main() -> Result<()> {
     bootstrap_layout(&cli).await?;
 
     if cli.unset_system_proxy {
-        unset_system_proxy(&cli.network_service)?;
+        if let Err(err) = unset_system_proxy(&cli.network_service) {
+            println!("system_proxy=manual");
+            println!(
+                "unset_proxy_hint={}",
+                unset_proxy_hint(&cli.network_service)
+            );
+            return Err(err);
+        }
         println!("system_proxy=disabled");
         return Ok(());
     }
@@ -94,11 +103,22 @@ async fn main() -> Result<()> {
         } else {
             listen_addr.ip().to_string()
         };
-        set_system_proxy(
+        if let Err(err) = set_system_proxy(
             &cli.network_service,
-            host_for_system_proxy,
+            &host_for_system_proxy,
             listen_addr.port(),
-        )?;
+        ) {
+            println!("system_proxy=manual");
+            println!(
+                "set_proxy_hint={}",
+                set_proxy_hint(
+                    &host_for_system_proxy,
+                    listen_addr.port(),
+                    &cli.network_service
+                )
+            );
+            return Err(err);
+        }
         println!("system_proxy=enabled");
     }
 
@@ -179,57 +199,6 @@ async fn bootstrap_layout(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
-fn set_system_proxy(service: &str, host: String, port: u16) -> Result<()> {
-    #[cfg(target_os = "macos")]
-    {
-        run_cmd(
-            "networksetup",
-            &["-setwebproxy", service, &host, &port.to_string()],
-        )?;
-        run_cmd(
-            "networksetup",
-            &["-setsecurewebproxy", service, &host, &port.to_string()],
-        )?;
-        run_cmd("networksetup", &["-setwebproxystate", service, "on"])?;
-        run_cmd("networksetup", &["-setsecurewebproxystate", service, "on"])?;
-        return Ok(());
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (service, host, port);
-        bail!(
-            "--set-system-proxy auto mode is currently implemented for macOS. Use shell env proxy exports for this OS."
-        );
-    }
-}
-
-fn unset_system_proxy(service: &str) -> Result<()> {
-    #[cfg(target_os = "macos")]
-    {
-        run_cmd("networksetup", &["-setwebproxystate", service, "off"])?;
-        run_cmd("networksetup", &["-setsecurewebproxystate", service, "off"])?;
-        return Ok(());
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = service;
-        bail!("--unset-system-proxy auto mode is currently implemented for macOS.");
-    }
-}
-
-fn run_cmd(cmd: &str, args: &[&str]) -> Result<()> {
-    let status = Command::new(cmd)
-        .args(args)
-        .status()
-        .with_context(|| format!("failed to execute {} {}", cmd, args.join(" ")))?;
-    if !status.success() {
-        bail!("command failed: {} {}", cmd, args.join(" "));
-    }
-    Ok(())
-}
-
 fn print_quick_hints(cli: &Cli, listen_addr: SocketAddr) {
     println!(
         "bootstrap_ok=true\\nca_cert={}\\nca_key={}\\nrule_file={}\\nflow_log={}",
@@ -253,6 +222,16 @@ fn print_quick_hints(cli: &Cli, listen_addr: SocketAddr) {
             listen_addr, listen_addr
         );
     }
+
+    println!("platform={}", platform_name());
+    println!(
+        "set_proxy_hint={}",
+        set_proxy_hint("127.0.0.1", listen_addr.port(), &cli.network_service)
+    );
+    println!(
+        "unset_proxy_hint={}",
+        unset_proxy_hint(&cli.network_service)
+    );
 
     match cli.mode {
         Mode::Local => {

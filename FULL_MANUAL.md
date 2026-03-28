@@ -26,6 +26,10 @@ OmniProxy is a modern MITM toolkit with:
 6. `omni-analyze`: offline flow diagnostics and hotspot analysis.
 7. `omni-global`: one-command global/lan capture bootstrap helper.
 
+`omni-global` platform status:
+1. macOS: auto system proxy set/unset supported.
+2. Windows/Linux: manual command hints emitted; adapter architecture already prepared.
+
 ## 3. Proxy Core (`omni_proxy`)
 
 ### 3.1 Start Proxy

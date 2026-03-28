@@ -61,6 +61,11 @@ OmniProxy combines these into a core-first architecture:
   - persisted flow loading and request-response correlation
   - shared base for CLI/TUI/API replay workflows
 
+- `src/platform/system_proxy.rs`
+  - platform adapter boundary for system-proxy control
+  - macOS implementation + Windows/Linux hint contracts
+  - keeps cross-platform expansion isolated from core proxy engine
+
 - `src/storage/mod.rs`
   - async JSONL flow persistence for replay/analytics foundations
 

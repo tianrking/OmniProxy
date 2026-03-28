@@ -100,6 +100,10 @@ cargo run --bin omni-global -- --unset-system-proxy
 cargo run --bin omni-global -- --mode lan
 ```
 
+Note:
+- macOS supports auto system proxy setup now.
+- Windows/Linux currently use `*_hint` outputs from `omni-global`; adapter boundary is already in place for native auto setup.
+
 6. Flow persistence (JSONL) is on by default:
 
 - `~/.omni-proxy/flows.jsonl`
