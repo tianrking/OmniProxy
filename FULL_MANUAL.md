@@ -29,6 +29,7 @@ OmniProxy is a modern MITM toolkit with:
 9. `omni-transparentd`: transparent HTTP/HTTPS forwarder (ports 10080/10443 by default).
 10. `omni-stack`: one-command orchestrator (global + transparent + kernel-capture + cleanup).
 11. `omni-vpn`: VPN control-plane CLI (cross-platform architecture, macOS-first implementation).
+12. `omni-run`: per-process capture runner (inject proxy env into target program).
 
 `omni-global` platform status:
 1. macOS: auto system proxy set/unset supported.

@@ -198,6 +198,15 @@ cargo run --bin omni-analyze -- --flow-log ~/.omni-proxy/flows.jsonl --top 20 --
 cargo run --bin omni-analyze -- --flow-log ./.omni-proxy/flows.jsonl --include-connect
 ```
 
+14. Per-process capture runner (target app/program):
+
+```bash
+# run a single command with proxy env injected
+cargo run --bin omni-run -- -- curl -k https://httpbin.org/get
+# preview command/env only
+cargo run --bin omni-run -- --print-only -- curl https://example.com
+```
+
 8. Validate rules before starting proxy:
 
 ```bash

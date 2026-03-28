@@ -239,6 +239,15 @@ cargo run --bin omni-analyze -- --flow-log ~/.omni-proxy/flows.jsonl --top 20 --
 cargo run --bin omni-analyze -- --flow-log ./.omni-proxy/flows.jsonl --include-connect
 ```
 
+指定程序抓包入口（按进程注入代理环境）：
+
+```bash
+# 用注入后的代理环境运行单个程序
+cargo run --bin omni-run -- -- curl -k https://httpbin.org/get
+# 仅预览将注入的参数，不执行
+cargo run --bin omni-run -- --print-only -- curl https://example.com
+```
+
 ## CI 与跨平台
 
 当前 CI 覆盖：
