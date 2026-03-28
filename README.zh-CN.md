@@ -105,6 +105,17 @@ cargo run --bin omni-global -- --mode lan
 cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 ```
 
+透明重定向辅助（HTTP 首版）：
+
+```bash
+# 仅打印将执行的命令
+cargo run --bin omni-transparent -- up
+# 真正应用规则（需要 sudo 权限）
+cargo run --bin omni-transparent -- up --apply
+# 清理规则
+cargo run --bin omni-transparent -- down --apply
+```
+
 说明：
 - macOS 已支持自动系统代理接管。
 - Linux（GNOME + `gsettings`）已支持自动系统代理接管。

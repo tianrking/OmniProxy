@@ -102,6 +102,17 @@ cargo run --bin omni-global -- --mode lan
 cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 ```
 
+Transparent redirect helper (HTTP first-cut):
+
+```bash
+# print commands only
+cargo run --bin omni-transparent -- up
+# apply rules (needs sudo privileges)
+cargo run --bin omni-transparent -- up --apply
+# remove rules
+cargo run --bin omni-transparent -- down --apply
+```
+
 Note:
 - macOS supports auto system proxy setup now.
 - Linux (GNOME with `gsettings`) supports auto system proxy setup now.
