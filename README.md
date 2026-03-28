@@ -139,6 +139,10 @@ cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" status
 cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" down
 ```
 
+`omni-vpn` behavior on macOS:
+- If `--service-name` exists in `scutil --nc list`, OmniProxy controls that service.
+- If service does not exist, OmniProxy switches to self-managed mode and sets system HTTP/HTTPS proxy to `--local-http-proxy` on `--network-service` (default `Wi-Fi`).
+
 Note:
 - macOS supports auto system proxy setup now.
 - Linux (GNOME with `gsettings`) supports auto system proxy setup now.

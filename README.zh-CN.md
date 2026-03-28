@@ -142,6 +142,10 @@ cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" status
 cargo run --bin omni-vpn -- --service-name "OmniProxy VPN" down
 ```
 
+`omni-vpn` 在 macOS 的行为：
+- 若 `--service-name` 存在于 `scutil --nc list`，则由 OmniProxy 控制该 VPN 服务。
+- 若服务不存在，自动切换到 OmniProxy 自管模式：在 `--network-service`（默认 `Wi-Fi`）上把系统 HTTP/HTTPS 代理指向 `--local-http-proxy`。
+
 说明：
 - macOS 已支持自动系统代理接管。
 - Linux（GNOME + `gsettings`）已支持自动系统代理接管。

@@ -1,4 +1,7 @@
-use crate::vpn::control::{VpnDoctorReport, VpnSpec, VpnStatus};
+use crate::{
+    platform::system_proxy::{set_system_proxy, unset_system_proxy},
+    vpn::control::{VpnDoctorReport, VpnSpec, VpnStatus},
+};
 use anyhow::{Context, Result, bail};
 use std::process::Command;
 
@@ -34,8 +37,15 @@ pub fn platform_name(kind: PlatformKind) -> &'static str {
 pub fn up(spec: &VpnSpec) -> Result<()> {
     match detect_platform() {
         PlatformKind::MacOs => {
-            ensure_macos_service_exists(spec)?;
-            run_cmd("scutil", &["--nc", "start", &spec.service_name])?;
+            let services = list_services()?;
+            if services.iter().any(|s| s == &spec.service_name) {
+                run_cmd("scutil", &["--nc", "start", &spec.service_name])?;
+                return Ok(());
+            }
+
+            let (host, port) = parse_host_port(&spec.local_http_proxy)?;
+            set_system_proxy(&spec.network_service, &host, port)
+                .with_context(|| "fallback to OmniProxy managed system-proxy mode")?;
             Ok(())
         }
         PlatformKind::Linux | PlatformKind::Windows | PlatformKind::Other => {
@@ -47,8 +57,13 @@ pub fn up(spec: &VpnSpec) -> Result<()> {
 pub fn down(spec: &VpnSpec) -> Result<()> {
     match detect_platform() {
         PlatformKind::MacOs => {
-            ensure_macos_service_exists(spec)?;
-            run_cmd("scutil", &["--nc", "stop", &spec.service_name])?;
+            let services = list_services()?;
+            if services.iter().any(|s| s == &spec.service_name) {
+                run_cmd("scutil", &["--nc", "stop", &spec.service_name])?;
+                return Ok(());
+            }
+            unset_system_proxy(&spec.network_service)
+                .with_context(|| "fallback to OmniProxy managed system-proxy reset")?;
             Ok(())
         }
         PlatformKind::Linux | PlatformKind::Windows | PlatformKind::Other => {
@@ -59,7 +74,13 @@ pub fn down(spec: &VpnSpec) -> Result<()> {
 
 pub fn status(spec: &VpnSpec) -> Result<VpnStatus> {
     match detect_platform() {
-        PlatformKind::MacOs => macos_status(spec),
+        PlatformKind::MacOs => {
+            let services = list_services()?;
+            if services.iter().any(|s| s == &spec.service_name) {
+                return macos_status_service(spec);
+            }
+            macos_status_managed_proxy(spec)
+        }
         PlatformKind::Linux | PlatformKind::Windows | PlatformKind::Other => Ok(VpnStatus {
             platform: platform_name(detect_platform()).to_string(),
             service_name: spec.service_name.clone(),
@@ -88,13 +109,18 @@ pub fn doctor(spec: &VpnSpec) -> Result<VpnDoctorReport> {
             let connected = status_info.as_ref().is_some_and(|s| s.connected);
 
             let mut notes = vec![
-                "macOS adapter uses `scutil --nc` control-plane facade".to_string(),
-                "For full tunnel packet forwarding, PacketTunnelProvider app/profile must be installed and signed".to_string(),
+                "macOS adapter supports two modes: scutil VPN service or OmniProxy-managed system-proxy".to_string(),
+                "Use OmniProxy-managed mode for immediate self-hosted capture without third-party VPN names".to_string(),
             ];
-            if !exists {
+            if exists {
                 notes.push(format!(
-                    "VPN service `{}` not found; run `omni-vpn list` and choose an existing service name",
+                    "service `{}` exists and will be controlled via scutil --nc",
                     spec.service_name
+                ));
+            } else {
+                notes.push(format!(
+                    "service `{}` not found; fallback mode will set system HTTP/HTTPS proxy on `{}` to {}",
+                    spec.service_name, spec.network_service, spec.local_http_proxy
                 ));
             }
 
@@ -124,7 +150,7 @@ pub fn doctor(spec: &VpnSpec) -> Result<VpnDoctorReport> {
     }
 }
 
-fn macos_status(spec: &VpnSpec) -> Result<VpnStatus> {
+fn macos_status_service(spec: &VpnSpec) -> Result<VpnStatus> {
     let out = Command::new("scutil")
         .args(["--nc", "status", &spec.service_name])
         .output()
@@ -141,25 +167,52 @@ fn macos_status(spec: &VpnSpec) -> Result<VpnStatus> {
         platform: "macos".into(),
         service_name: spec.service_name.clone(),
         connected,
-        raw_status: raw.trim().to_string(),
+        raw_status: format!("mode=scutil\n{}", raw.trim()),
     })
 }
 
-fn ensure_macos_service_exists(spec: &VpnSpec) -> Result<()> {
-    let services = list_services()?;
-    if services.iter().any(|s| s == &spec.service_name) {
-        return Ok(());
-    }
-    let joined = if services.is_empty() {
-        "(none)".to_string()
-    } else {
-        services.join(", ")
-    };
-    bail!(
-        "vpn service `{}` not found. existing services: {}. use `omni-vpn list` or pass --service-name",
-        spec.service_name,
-        joined
+fn macos_status_managed_proxy(spec: &VpnSpec) -> Result<VpnStatus> {
+    let web = run_cmd_capture("networksetup", &["-getwebproxy", &spec.network_service])
+        .unwrap_or_else(|e| format!("error: {}", e));
+    let secure = run_cmd_capture(
+        "networksetup",
+        &["-getsecurewebproxy", &spec.network_service],
     )
+    .unwrap_or_else(|e| format!("error: {}", e));
+    let enabled = web.contains("Enabled: Yes") && secure.contains("Enabled: Yes");
+    let (expect_host, expect_port) = parse_host_port(&spec.local_http_proxy)?;
+    let host_ok = web.contains(&format!("Server: {}", expect_host))
+        && secure.contains(&format!("Server: {}", expect_host));
+    let port_ok = web.contains(&format!("Port: {}", expect_port))
+        && secure.contains(&format!("Port: {}", expect_port));
+    let connected = enabled && host_ok && port_ok;
+
+    Ok(VpnStatus {
+        platform: "macos".into(),
+        service_name: spec.service_name.clone(),
+        connected,
+        raw_status: format!(
+            "mode=managed-system-proxy\nnetwork_service={}\nexpected_proxy={}\nweb_proxy=\n{}\nsecure_web_proxy=\n{}",
+            spec.network_service,
+            spec.local_http_proxy,
+            web.trim(),
+            secure.trim()
+        ),
+    })
+}
+
+fn parse_host_port(raw: &str) -> Result<(String, u16)> {
+    if let Some((host, port)) = raw.rsplit_once(':') {
+        let p = port
+            .parse::<u16>()
+            .with_context(|| format!("invalid port in {}", raw))?;
+        let h = host.trim();
+        if h.is_empty() {
+            bail!("empty host in {}", raw);
+        }
+        return Ok((h.to_string(), p));
+    }
+    bail!("invalid host:port format: {}", raw)
 }
 
 fn is_connected_status(raw: &str) -> bool {
@@ -215,7 +268,7 @@ fn run_cmd_capture(cmd: &str, args: &[&str]) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_connected_status, parse_macos_nc_list};
+    use super::{is_connected_status, parse_host_port, parse_macos_nc_list};
 
     #[test]
     fn parse_nc_list_extracts_names() {
@@ -235,5 +288,12 @@ mod tests {
         assert!(is_connected_status("Connected"));
         assert!(is_connected_status("Connecting"));
         assert!(!is_connected_status("Disconnected"));
+    }
+
+    #[test]
+    fn host_port_parser() {
+        let got = parse_host_port("127.0.0.1:9090").expect("parse host:port");
+        assert_eq!(got.0, "127.0.0.1");
+        assert_eq!(got.1, 9090);
     }
 }

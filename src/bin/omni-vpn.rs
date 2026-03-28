@@ -35,6 +35,9 @@ struct Cli {
 
     #[arg(long, default_value = "127.0.0.1:5353")]
     local_dns: String,
+
+    #[arg(long, default_value = "Wi-Fi")]
+    network_service: String,
 }
 
 fn main() -> Result<()> {
@@ -44,6 +47,7 @@ fn main() -> Result<()> {
         local_socks5: cli.local_socks5,
         local_http_proxy: cli.local_http_proxy,
         local_dns: cli.local_dns,
+        network_service: cli.network_service,
     };
 
     match cli.cmd {

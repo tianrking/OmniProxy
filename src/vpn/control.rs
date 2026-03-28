@@ -6,6 +6,7 @@ pub struct VpnSpec {
     pub local_socks5: String,
     pub local_http_proxy: String,
     pub local_dns: String,
+    pub network_service: String,
 }
 
 impl Default for VpnSpec {
@@ -15,6 +16,7 @@ impl Default for VpnSpec {
             local_socks5: "127.0.0.1:1080".to_string(),
             local_http_proxy: "127.0.0.1:9090".to_string(),
             local_dns: "127.0.0.1:5353".to_string(),
+            network_service: "Wi-Fi".to_string(),
         }
     }
 }
