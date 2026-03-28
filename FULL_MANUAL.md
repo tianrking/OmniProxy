@@ -149,13 +149,26 @@ cargo run --bin omni-replay -- --request-id <id>
 1. `--method-override`
 2. `--url-override`
 3. `--header "K: V"` (repeatable)
-4. `--no-body`
-5. `--dry-run`
-6. `--print-curl`
-7. `--session-client`
-8. `--session-limit`
+4. `--drop-header "K"` (repeatable)
+5. `--query "k=v"` (repeatable, append query pairs)
+6. `--body-text '{"k":"v"}'`
+7. `--body-file /path/body.bin`
+8. `--interactive` (prompt method/url/header/body edits before replay)
+9. `--no-body`
+10. `--dry-run`
+11. `--print-curl`
+12. `--session-client`
+13. `--session-limit`
 
-### 6.3 Diff Output
+### 6.3 Replay Edit Examples
+
+```bash
+cargo run --bin omni-replay -- --index 12 --drop-header Cookie --query trace_id=dev --body-text '{"debug":true}'
+cargo run --bin omni-replay -- --request-id <id> --body-file ./payload.json --print-curl
+cargo run --bin omni-replay -- --index 12 --interactive --print-curl
+```
+
+### 6.4 Diff Output
 
 Replay prints captured-vs-live differences for:
 1. response status

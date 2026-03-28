@@ -19,23 +19,44 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use reqwest::Method;
-use std::{collections::HashMap, io, time::Duration};
+use std::{
+    collections::{HashMap, VecDeque},
+    io,
+    time::Duration,
+};
 use tokio::sync::mpsc;
 use tokio_tungstenite::connect_async;
 
 #[derive(Debug, Parser)]
 #[command(name = "omni-tui", about = "OmniProxy geek-first TUI")]
 struct Cli {
-    #[arg(long, default_value = "ws://127.0.0.1:9091")]
+    #[arg(long, default_value = "ws://127.0.0.1:9091/ws")]
     api: String,
 }
 
 #[derive(Debug, Clone)]
 struct Flow {
     client: String,
+    request_id: Option<String>,
     method: Option<String>,
     uri: Option<String>,
     status: Option<u16>,
+    req_ts_ms: Option<u64>,
+    res_ts_ms: Option<u64>,
+    req_body_size: Option<usize>,
+    res_body_size: Option<usize>,
+    req_capture_reason: Option<String>,
+    res_capture_reason: Option<String>,
+    ws_frames: usize,
+    ws_bytes: usize,
+    is_connect: bool,
+}
+
+#[derive(Debug)]
+enum UiEvent {
+    Api(ApiEvent),
+    WsConnected,
+    WsDisconnected(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +75,7 @@ impl Default for InputMode {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<ApiEvent>();
+    let (tx, mut rx) = mpsc::unbounded_channel::<UiEvent>();
     let ws_url = cli.api.clone();
     tokio::spawn(async move {
         if let Err(err) = ws_reader_task(&ws_url, tx).await {
@@ -79,28 +100,37 @@ async fn main() -> Result<()> {
     loop_result
 }
 
-async fn ws_reader_task(url: &str, tx: mpsc::UnboundedSender<ApiEvent>) -> Result<()> {
-    let (ws, _) = connect_async(url).await?;
-    let (_, mut read) = ws.split();
+async fn ws_reader_task(url: &str, tx: mpsc::UnboundedSender<UiEvent>) -> Result<()> {
+    loop {
+        match connect_async(url).await {
+            Ok((ws, _)) => {
+                let _ = tx.send(UiEvent::WsConnected);
+                let (_, mut read) = ws.split();
 
-    while let Some(msg) = read.next().await {
-        let msg = msg?;
-        if !msg.is_text() {
-            continue;
+                while let Some(msg) = read.next().await {
+                    let msg = msg?;
+                    if !msg.is_text() {
+                        continue;
+                    }
+                    let text = msg.into_text()?;
+                    if let Ok(event) = serde_json::from_str::<ApiEvent>(&text) {
+                        let _ = tx.send(UiEvent::Api(event));
+                    }
+                }
+                let _ = tx.send(UiEvent::WsDisconnected("socket closed".into()));
+            }
+            Err(err) => {
+                let _ = tx.send(UiEvent::WsDisconnected(err.to_string()));
+            }
         }
-        let text = msg.into_text()?;
-        if let Ok(event) = serde_json::from_str::<ApiEvent>(&text) {
-            let _ = tx.send(event);
-        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
-
-    Ok(())
 }
 
 async fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
-    rx: &mut mpsc::UnboundedReceiver<ApiEvent>,
+    rx: &mut mpsc::UnboundedReceiver<UiEvent>,
 ) -> Result<()> {
     loop {
         while let Ok(event) = rx.try_recv() {
@@ -127,6 +157,7 @@ async fn run_loop(
                     KeyCode::Char('r') => {
                         app.replay_selected().await;
                     }
+                    KeyCode::Char('x') => app.toggle_hide_connect(),
                     KeyCode::Char('/') => {
                         app.input_mode = InputMode::Filter;
                         app.filter_buffer.clear();
@@ -180,11 +211,18 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
                 .status
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| "-".into());
+            let latency = flow
+                .req_ts_ms
+                .zip(flow.res_ts_ms)
+                .map(|(a, b)| b.saturating_sub(a).to_string())
+                .unwrap_or_else(|| "-".into());
 
             ListItem::new(Line::from(vec![
                 Span::styled(method, Style::default().fg(Color::Cyan)),
                 Span::raw("  "),
                 Span::raw(status),
+                Span::raw("  "),
+                Span::raw(format!("{}ms", latency)),
                 Span::raw("  "),
                 Span::raw(uri),
             ]))
@@ -196,7 +234,7 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
     let list = List::new(items)
         .block(
             Block::default()
-                .title("Flows (j/k, g/G, /, r replay, c clear, q quit)")
+                .title("Flows (j/k, g/G, /, r replay, x hide CONNECT, c clear, q quit)")
                 .borders(Borders::ALL),
         )
         .highlight_style(
@@ -209,6 +247,10 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
     let detail = if let Some(flow) = app.selected_flow() {
         vec![
             Line::from(format!("Client: {}", flow.client)),
+            Line::from(format!(
+                "Request-Id: {}",
+                flow.request_id.as_deref().unwrap_or("-")
+            )),
             Line::from(format!("Method: {}", flow.method.as_deref().unwrap_or("-"))),
             Line::from(format!("URI: {}", flow.uri.as_deref().unwrap_or("-"))),
             Line::from(format!(
@@ -224,6 +266,34 @@ fn draw_ui(frame: &mut ratatui::Frame<'_>, app: &App) {
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "-".into())
             )),
+            Line::from(format!(
+                "Latency(ms): {}",
+                flow.req_ts_ms
+                    .zip(flow.res_ts_ms)
+                    .map(|(a, b)| b.saturating_sub(a).to_string())
+                    .unwrap_or_else(|| "-".into())
+            )),
+            Line::from(format!(
+                "ReqBody(bytes): {}",
+                flow.req_body_size
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "-".into())
+            )),
+            Line::from(format!(
+                "ResBody(bytes): {}",
+                flow.res_body_size
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "-".into())
+            )),
+            Line::from(format!(
+                "ReqCapture: {}",
+                flow.req_capture_reason.as_deref().unwrap_or("-")
+            )),
+            Line::from(format!(
+                "ResCapture: {}",
+                flow.res_capture_reason.as_deref().unwrap_or("-")
+            )),
+            Line::from(format!("WS Frames/Bytes: {}/{}", flow.ws_frames, flow.ws_bytes)),
         ]
     } else {
         vec![Line::from("No flow selected")]
@@ -259,6 +329,13 @@ struct App {
     filter_expr: Option<Expr>,
     status_line: String,
     latest_req_idx_by_client: HashMap<String, usize>,
+    pending_req_indexes_by_client: HashMap<String, VecDeque<usize>>,
+    req_idx_by_request_id: HashMap<String, usize>,
+    ws_connected: bool,
+    ws_status: String,
+    hide_connect: bool,
+    ws_frames_total: usize,
+    ws_bytes_total: usize,
 }
 
 impl App {
@@ -297,38 +374,119 @@ impl App {
         }
     }
 
-    fn ingest(&mut self, event: ApiEvent) {
+    fn ingest(&mut self, event: UiEvent) {
         match event {
-            ApiEvent::HttpRequest {
+            UiEvent::WsConnected => {
+                self.ws_connected = true;
+                self.ws_status = "connected".into();
+            }
+            UiEvent::WsDisconnected(reason) => {
+                self.ws_connected = false;
+                self.ws_status = format!("disconnected: {}", reason);
+            }
+            UiEvent::Api(ApiEvent::HttpRequest {
+                timestamp_ms,
+                request_id,
                 client,
                 method,
                 uri,
+                body_size,
+                body_capture_reason,
                 ..
-            } => {
+            }) => {
                 let idx = self.flows.len();
+                let is_connect = method.eq_ignore_ascii_case("CONNECT");
                 self.flows.push(Flow {
                     client: client.clone(),
+                    request_id: request_id.clone(),
                     method: Some(method),
                     uri: Some(uri),
                     status: None,
+                    req_ts_ms: Some(timestamp_ms),
+                    res_ts_ms: None,
+                    req_body_size: body_size,
+                    res_body_size: None,
+                    req_capture_reason: body_capture_reason,
+                    res_capture_reason: None,
+                    ws_frames: 0,
+                    ws_bytes: 0,
+                    is_connect,
                 });
-                self.latest_req_idx_by_client.insert(client, idx);
+                self.latest_req_idx_by_client.insert(client.clone(), idx);
+                self.pending_req_indexes_by_client
+                    .entry(client)
+                    .or_default()
+                    .push_back(idx);
+                if let Some(req_id) = request_id {
+                    self.req_idx_by_request_id.insert(req_id, idx);
+                }
             }
-            ApiEvent::HttpResponse { client, status, .. } => {
-                if let Some(idx) = self.latest_req_idx_by_client.get(&client).copied() {
+            UiEvent::Api(ApiEvent::HttpResponse {
+                timestamp_ms,
+                request_id,
+                client,
+                status,
+                body_size,
+                body_capture_reason,
+                ..
+            }) => {
+                let idx = request_id
+                    .as_deref()
+                    .and_then(|id| self.req_idx_by_request_id.get(id).copied())
+                    .or_else(|| {
+                        self.pending_req_indexes_by_client
+                            .get_mut(&client)
+                            .and_then(|q| q.pop_front())
+                    })
+                    .or_else(|| self.latest_req_idx_by_client.get(&client).copied());
+
+                if let Some(idx) = idx {
                     if let Some(flow) = self.flows.get_mut(idx) {
                         flow.status = Some(status);
+                        flow.res_ts_ms = Some(timestamp_ms);
+                        flow.res_body_size = body_size;
+                        flow.res_capture_reason = body_capture_reason;
+                    }
+                    if let Some(req_id) = request_id {
+                        self.req_idx_by_request_id.remove(&req_id);
+                    }
+                    if let Some(q) = self.pending_req_indexes_by_client.get_mut(&client)
+                        && let Some(pos) = q.iter().position(|v| *v == idx)
+                    {
+                        let _ = q.remove(pos);
                     }
                 } else {
                     self.flows.push(Flow {
                         client,
+                        request_id,
                         method: None,
                         uri: None,
                         status: Some(status),
+                        req_ts_ms: None,
+                        res_ts_ms: Some(timestamp_ms),
+                        req_body_size: None,
+                        res_body_size: body_size,
+                        req_capture_reason: None,
+                        res_capture_reason: body_capture_reason,
+                        ws_frames: 0,
+                        ws_bytes: 0,
+                        is_connect: false,
                     });
                 }
             }
-            ApiEvent::WebSocketFrame { .. } => {}
+            UiEvent::Api(ApiEvent::WebSocketFrame {
+                client, payload_len, ..
+            }) => {
+                self.ws_frames_total = self.ws_frames_total.saturating_add(1);
+                self.ws_bytes_total = self.ws_bytes_total.saturating_add(payload_len);
+                if let Some(client) = client
+                    && let Some(idx) = self.latest_req_idx_by_client.get(&client).copied()
+                    && let Some(flow) = self.flows.get_mut(idx)
+                {
+                    flow.ws_frames = flow.ws_frames.saturating_add(1);
+                    flow.ws_bytes = flow.ws_bytes.saturating_add(payload_len);
+                }
+            }
         }
 
         if !self.flows.is_empty() {
@@ -365,6 +523,10 @@ impl App {
     }
 
     fn matches(&self, flow: &Flow) -> bool {
+        if self.hide_connect && flow.is_connect {
+            return false;
+        }
+
         let Some(expr) = &self.filter_expr else {
             return true;
         };
@@ -423,8 +585,20 @@ impl App {
     fn clear(&mut self) {
         self.flows.clear();
         self.latest_req_idx_by_client.clear();
+        self.pending_req_indexes_by_client.clear();
+        self.req_idx_by_request_id.clear();
         self.selected = 0;
+        self.ws_frames_total = 0;
+        self.ws_bytes_total = 0;
         self.status_line = "flows cleared".into();
+    }
+
+    fn toggle_hide_connect(&mut self) {
+        self.hide_connect = !self.hide_connect;
+        self.status_line = format!(
+            "hide CONNECT: {}",
+            if self.hide_connect { "on" } else { "off" }
+        );
     }
 
     fn footer_text(&self) -> String {
@@ -434,12 +608,31 @@ impl App {
             InputMode::Normal => "NORMAL",
             InputMode::Filter => "FILTER",
         };
+        let ws = if self.ws_connected { "ws=up" } else { "ws=down" };
+        let connect = if self.hide_connect {
+            "connect=hidden"
+        } else {
+            "connect=shown"
+        };
+        let ws_stats = format!(
+            "ws_frames={} ws_bytes={}",
+            self.ws_frames_total, self.ws_bytes_total
+        );
+        let ws_status = if self.ws_status.is_empty() {
+            "-".to_string()
+        } else {
+            self.ws_status.clone()
+        };
+
         if self.status_line.is_empty() {
-            format!("mode={}  visible={}/{}", mode, visible, total)
+            format!(
+                "{} {} {} ws_status={} mode={} visible={}/{}",
+                ws, connect, ws_stats, ws_status, mode, visible, total
+            )
         } else {
             format!(
-                "{} | mode={}  visible={}/{}",
-                self.status_line, mode, visible, total
+                "{} | {} {} {} ws_status={} mode={} visible={}/{}",
+                self.status_line, ws, connect, ws_stats, ws_status, mode, visible, total
             )
         }
     }

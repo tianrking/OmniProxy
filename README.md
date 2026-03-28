@@ -82,7 +82,7 @@ WebSocket active mutation controls:
 5. Run geek-first TUI (first iteration):
 
 ```bash
-cargo run --bin omni-tui -- --api ws://127.0.0.1:9091
+cargo run --bin omni-tui -- --api ws://127.0.0.1:9091/ws
 ```
 
 6. Flow persistence (JSONL) is on by default:
@@ -103,6 +103,8 @@ cargo run --bin omni-replay -- --request-id 4d3a... --header "Authorization: Bea
 cargo run --bin omni-replay -- --index 12 --dry-run --print-curl
 cargo run --bin omni-replay -- --index 12 --no-body
 cargo run --bin omni-replay -- --session-client 127.0.0.1:54022 --session-limit 10
+cargo run --bin omni-replay -- --index 12 --drop-header Cookie --query trace_id=dev --body-text '{"debug":true}'
+cargo run --bin omni-replay -- --index 12 --interactive --print-curl
 ```
 
 Replay output now includes captured-vs-live diff for:
@@ -203,9 +205,12 @@ This parser is ready to be wired into TUI/API query filtering.
 Current TUI supports:
 
 - flow list + detail pane
-- full keyboard navigation (`j/k`, `q`, `/`, `c`, `r`)
+- full keyboard navigation (`j/k`, `q`, `/`, `c`, `r`, `x`)
 - inline declarative filtering via DSL
 - replay selected flow with `r`
+- hide CONNECT tunnel entries with `x`
+- request/response correlation detail: `request_id`, latency, body sizes, capture reasons
+- ws connection status and frame/bytes counters in footer
 
 ## Architecture
 

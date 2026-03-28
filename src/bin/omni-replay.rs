@@ -6,7 +6,11 @@ use reqwest::Method;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, VecDeque};
-use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Write},
+    path::PathBuf,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "omni-replay", about = "Replay flows from OmniProxy JSONL logs")]
@@ -31,6 +35,21 @@ struct Cli {
 
     #[arg(long = "header")]
     headers: Vec<String>,
+
+    #[arg(long = "drop-header")]
+    drop_headers: Vec<String>,
+
+    #[arg(long = "query")]
+    query_overrides: Vec<String>,
+
+    #[arg(long)]
+    body_text: Option<String>,
+
+    #[arg(long)]
+    body_file: Option<PathBuf>,
+
+    #[arg(long, default_value_t = false)]
+    interactive: bool,
 
     #[arg(long, default_value_t = false)]
     dry_run: bool,
@@ -130,33 +149,48 @@ async fn main() -> Result<()> {
 }
 
 async fn replay_one(cli: &Cli, candidate: &ReplayCandidate) -> Result<()> {
-    let method = cli
+    let mut method = cli
         .method_override
         .as_deref()
         .unwrap_or(&candidate.method)
         .to_uppercase();
-    let uri = cli
+    let mut uri = cli
         .url_override
         .as_deref()
         .unwrap_or(&candidate.uri)
         .to_string();
+    if !cli.query_overrides.is_empty() {
+        uri = apply_query_overrides(&uri, &cli.query_overrides)?;
+    }
     if !uri.starts_with("http://") && !uri.starts_with("https://") {
         bail!(
             "URI is not absolute and cannot be replayed directly: {}",
             uri
         );
     }
+    let mut extra_headers = cli.headers.clone();
+    let mut drop_headers = cli.drop_headers.clone();
+    let mut body = resolve_body(cli, candidate)?;
+
+    if cli.interactive {
+        interactive_edit(
+            &mut method,
+            &mut uri,
+            &mut extra_headers,
+            &mut drop_headers,
+            &mut body,
+        )?;
+    }
+
     let method = Method::from_bytes(method.as_bytes())
         .with_context(|| format!("invalid method: {}", method))?;
-    let headers = build_headers(&candidate.headers, &cli.headers)?;
-    let body = if cli.no_body {
-        None
-    } else {
-        candidate.body.clone()
-    };
+    let headers = build_headers(&candidate.headers, &extra_headers, &drop_headers)?;
 
     if cli.print_curl || cli.dry_run {
-        println!("{}", render_curl(&method.to_string(), &uri, &headers));
+        println!(
+            "{}",
+            render_curl(&method.to_string(), &uri, &headers, body.as_deref())
+        );
     }
     if cli.dry_run {
         println!("dry-run enabled, skip actual request");
@@ -234,6 +268,22 @@ async fn replay_one(cli: &Cli, candidate: &ReplayCandidate) -> Result<()> {
         );
     }
     Ok(())
+}
+
+fn resolve_body(cli: &Cli, candidate: &ReplayCandidate) -> Result<Option<Vec<u8>>> {
+    if cli.no_body {
+        return Ok(None);
+    }
+    if let Some(v) = &cli.body_text {
+        return Ok(Some(v.as_bytes().to_vec()));
+    }
+    if let Some(path) = &cli.body_file {
+        let resolved = expand_home(path.clone());
+        return std::fs::read(&resolved)
+            .with_context(|| format!("read body file {}", resolved.display()))
+            .map(Some);
+    }
+    Ok(candidate.body.clone())
 }
 
 fn load_requests(path: &PathBuf) -> Result<Vec<ReplayCandidate>> {
@@ -337,10 +387,21 @@ fn expand_home(path: PathBuf) -> PathBuf {
     path
 }
 
-fn build_headers(captured: &[(String, String)], overrides: &[String]) -> Result<HeaderMap> {
+fn build_headers(
+    captured: &[(String, String)],
+    overrides: &[String],
+    drop_headers: &[String],
+) -> Result<HeaderMap> {
     let mut map = HeaderMap::new();
+    let drop_set: std::collections::HashSet<String> = drop_headers
+        .iter()
+        .map(|h| h.trim().to_ascii_lowercase())
+        .collect();
     for (k, v) in captured {
         if is_hop_by_hop(k) {
+            continue;
+        }
+        if drop_set.contains(&k.to_ascii_lowercase()) {
             continue;
         }
         let name = HeaderName::from_bytes(k.as_bytes())
@@ -381,7 +442,7 @@ fn is_hop_by_hop(name: &str) -> bool {
     )
 }
 
-fn render_curl(method: &str, uri: &str, headers: &HeaderMap) -> String {
+fn render_curl(method: &str, uri: &str, headers: &HeaderMap, body: Option<&[u8]>) -> String {
     let mut out = format!("curl -X {} '{}'", method, uri);
     for (k, v) in headers {
         if let Ok(val) = v.to_str() {
@@ -390,6 +451,13 @@ fn render_curl(method: &str, uri: &str, headers: &HeaderMap) -> String {
                 k.as_str(),
                 shell_escape_single(val)
             ));
+        }
+    }
+    if let Some(bytes) = body {
+        if let Ok(s) = std::str::from_utf8(bytes) {
+            out.push_str(&format!(" --data-raw '{}'", shell_escape_single(s)));
+        } else {
+            out.push_str(" --data-binary '<non-utf8-body>'");
         }
     }
     out
@@ -437,4 +505,95 @@ fn hash_bytes(data: &[u8]) -> String {
 
 fn to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+fn apply_query_overrides(uri: &str, pairs: &[String]) -> Result<String> {
+    let mut url = reqwest::Url::parse(uri).with_context(|| format!("invalid url: {}", uri))?;
+    for item in pairs {
+        let (k, v) = item
+            .split_once('=')
+            .with_context(|| format!("invalid --query '{}', expected key=value", item))?;
+        let mut qp = url.query_pairs_mut();
+        qp.append_pair(k.trim(), v.trim());
+    }
+    Ok(url.to_string())
+}
+
+fn interactive_edit(
+    method: &mut String,
+    uri: &mut String,
+    headers: &mut Vec<String>,
+    drop_headers: &mut Vec<String>,
+    body: &mut Option<Vec<u8>>,
+) -> Result<()> {
+    println!("\n[interactive replay edit]");
+    if let Some(v) = prompt_default("method", method)? {
+        *method = v.to_uppercase();
+    }
+    if let Some(v) = prompt_default("uri", uri)? {
+        *uri = v;
+    }
+
+    loop {
+        let line = prompt("add header (Key: Value), empty to continue")?;
+        if line.trim().is_empty() {
+            break;
+        }
+        headers.push(line);
+    }
+
+    loop {
+        let line = prompt("drop header name, empty to continue")?;
+        if line.trim().is_empty() {
+            break;
+        }
+        drop_headers.push(line);
+    }
+
+    println!("body mode: [k]eep, [e]mpty, [t]ext, [f]ile");
+    let mode = prompt("choose body mode (default: keep)")?;
+    match mode.trim() {
+        "" | "k" | "keep" => {}
+        "e" | "empty" => *body = None,
+        "t" | "text" => {
+            let text = prompt("body text")?;
+            *body = Some(text.into_bytes());
+        }
+        "f" | "file" => {
+            let p = prompt("body file path")?;
+            if !p.trim().is_empty() {
+                let file = expand_home(PathBuf::from(p.trim()));
+                *body = Some(
+                    std::fs::read(&file)
+                        .with_context(|| format!("read interactive body file {}", file.display()))?,
+                );
+            }
+        }
+        other => {
+            bail!("invalid body mode: {}", other);
+        }
+    }
+
+    Ok(())
+}
+
+fn prompt(label: &str) -> Result<String> {
+    print!("{}: ", label);
+    std::io::stdout().flush()?;
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line)?;
+    Ok(line.trim_end_matches(['\r', '\n']).to_string())
+}
+
+fn prompt_default(label: &str, current: &str) -> Result<Option<String>> {
+    print!("{} [{}]: ", label, current);
+    std::io::stdout().flush()?;
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line)?;
+    let line = line.trim_end_matches(['\r', '\n']).trim().to_string();
+    if line.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(line))
+    }
 }
