@@ -1,6 +1,8 @@
 # OmniProxy 完整功能手册（中文）
 
 English Version: [FULL_MANUAL.md](./FULL_MANUAL.md)
+Usage Cookbook: [docs/USAGE_COOKBOOK.zh-CN.md](./docs/USAGE_COOKBOOK.zh-CN.md)
+总体规划: [docs/MASTER_PLAN.zh-CN.md](./docs/MASTER_PLAN.zh-CN.md)
 
 ## 1. 功能总览
 
@@ -20,6 +22,8 @@ OmniProxy 提供以下核心能力：
 2. `omni-tui`：终端界面。
 3. `omni-replay`：回放与差异分析。
 4. `omni-bench`：基准压测工具。
+5. `omni-converge`：协议正确性收敛压测。
+6. `omni-analyze`：离线流量诊断与热点分析。
 
 ## 3. 核心代理（`omni_proxy`）
 

@@ -13,10 +13,12 @@ OmniProxy target capabilities:
 
 Detailed master checklist:
 - `docs/CORE_FEATURE_PLAN.md` (authoritative parity and execution plan)
+- `docs/MASTER_PLAN.md` (milestones, acceptance, and iteration estimate)
+- `docs/USAGE_COOKBOOK.md` (operator and analyst task cookbook)
 
 ## Iteration Plan
 
-Estimated total: **14 major iterations** (7 completed, 7 remaining).
+Estimated remaining: **6-8 iterations** to v1.0 baseline closure.
 
 Execution cadence:
 - Major iterations remaining: `7` (`R2..R8`)

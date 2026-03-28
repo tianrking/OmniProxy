@@ -1,6 +1,8 @@
 # OmniProxy Full Manual (English)
 
 中文版本: [FULL_MANUAL.zh-CN.md](./FULL_MANUAL.zh-CN.md)
+Usage Cookbook: [docs/USAGE_COOKBOOK.md](./docs/USAGE_COOKBOOK.md)
+Master Plan: [docs/MASTER_PLAN.md](./docs/MASTER_PLAN.md)
 
 ## 1. What OmniProxy Provides
 
@@ -20,6 +22,8 @@ OmniProxy is a modern MITM toolkit with:
 2. `omni-tui`: terminal UI.
 3. `omni-replay`: replay and compare captured requests.
 4. `omni-bench`: benchmark helper.
+5. `omni-converge`: protocol correctness convergence runner.
+6. `omni-analyze`: offline flow diagnostics and hotspot analysis.
 
 ## 3. Proxy Core (`omni_proxy`)
 
