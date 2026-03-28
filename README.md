@@ -125,6 +125,10 @@ cargo run --bin omni-stack -- --mode local
 cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"
 ```
 
+Notes:
+- When running from source tree, `omni-stack` auto-builds missing companion binaries (`omni-global`, `omni-transparent*`, `omni-vpn`).
+- For VPN mode, use an existing service shown by `cargo run --bin omni-vpn -- list`.
+
 macOS-first VPN control plane (cross-platform adapter boundary):
 
 ```bash

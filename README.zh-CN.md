@@ -128,6 +128,10 @@ cargo run --bin omni-stack -- --mode local
 cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"
 ```
 
+说明：
+- 从源码目录运行时，`omni-stack` 会自动补编译缺失的配套二进制（`omni-global`、`omni-transparent*`、`omni-vpn`）。
+- VPN 模式下请使用 `cargo run --bin omni-vpn -- list` 中存在的服务名。
+
 macOS 优先的 VPN 控制面（跨平台适配层）：
 
 ```bash

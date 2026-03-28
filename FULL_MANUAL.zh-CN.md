@@ -45,6 +45,7 @@ OmniProxy 提供以下核心能力：
 
 `omni-stack` 已支持把 VPN 控制面编排进一条命令：
 1. `cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"`
+2. 从源码目录运行时，若缺少配套二进制，`omni-stack` 会自动补编译。
 
 ## 3. 核心代理（`omni_proxy`）
 

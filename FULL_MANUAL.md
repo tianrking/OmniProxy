@@ -45,6 +45,7 @@ OmniProxy is a modern MITM toolkit with:
 
 `omni-stack` can now orchestrate VPN control as part of one command:
 1. `cargo run --bin omni-stack -- --mode local --vpn --vpn-service-name "OmniProxy VPN"`
+2. when launched from source tree, missing companion binaries are auto-built by `omni-stack`.
 
 ## 3. Proxy Core (`omni_proxy`)
 

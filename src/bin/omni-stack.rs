@@ -55,13 +55,25 @@ async fn main() -> Result<()> {
         .init();
 
     let bin_dir = current_bin_dir()?;
+    let workspace_root = detect_workspace_root(&bin_dir);
+    let profile = detect_profile(&bin_dir);
     let omni_global = bin_path(&bin_dir, "omni-global");
     let omni_transparent = bin_path(&bin_dir, "omni-transparent");
     let omni_transparentd = bin_path(&bin_dir, "omni-transparentd");
     let omni_vpn = bin_path(&bin_dir, "omni-vpn");
 
+    let mut required_bins = vec!["omni-global"];
+    if cli.transparent {
+        required_bins.push("omni-transparent");
+        required_bins.push("omni-transparentd");
+    }
+    if cli.vpn {
+        required_bins.push("omni-vpn");
+    }
+    ensure_bins_present(&bin_dir, workspace_root.as_deref(), profile, &required_bins).await?;
+
     if !omni_global.exists() {
-        bail!("missing binary: {}", omni_global.display());
+        bail!("missing binary after auto-build: {}", omni_global.display());
     }
     if cli.vpn {
         ensure_exec(&omni_vpn)?;
@@ -205,6 +217,66 @@ fn bin_path(bin_dir: &Path, name: &str) -> PathBuf {
     {
         bin_dir.join(name)
     }
+}
+
+fn detect_profile(bin_dir: &Path) -> &'static str {
+    match bin_dir.file_name().and_then(|s| s.to_str()) {
+        Some("release") => "release",
+        _ => "debug",
+    }
+}
+
+fn detect_workspace_root(bin_dir: &Path) -> Option<PathBuf> {
+    let mut cur = Some(bin_dir.to_path_buf());
+    while let Some(path) = cur {
+        if path.join("Cargo.toml").exists() {
+            return Some(path);
+        }
+        cur = path.parent().map(|p| p.to_path_buf());
+    }
+    None
+}
+
+async fn ensure_bins_present(
+    bin_dir: &Path,
+    workspace_root: Option<&Path>,
+    profile: &str,
+    required_bins: &[&str],
+) -> Result<()> {
+    let missing = required_bins
+        .iter()
+        .filter_map(|name| {
+            let path = bin_path(bin_dir, name);
+            if path.exists() { None } else { Some(*name) }
+        })
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let root = workspace_root
+        .context("required binaries are missing and Cargo workspace root is not discoverable")?;
+
+    let mut cmd = Command::new("cargo");
+    cmd.arg("build");
+    if profile == "release" {
+        cmd.arg("--release");
+    }
+    for name in &missing {
+        cmd.args(["--bin", name]);
+    }
+    let status = cmd
+        .current_dir(root)
+        .status()
+        .await
+        .with_context(|| format!("auto-build missing binaries: {}", missing.join(", ")))?;
+    if !status.success() {
+        bail!(
+            "auto-build failed for missing binaries: {}",
+            missing.join(", ")
+        );
+    }
+    Ok(())
 }
 
 fn ensure_exec(path: &Path) -> Result<()> {
