@@ -30,6 +30,7 @@ OmniProxy 提供以下核心能力：
 1. macOS：已支持自动系统代理接管/恢复。
 2. Linux（GNOME + `gsettings`）：已支持自动系统代理接管/恢复。
 3. Windows：当前输出手动命令提示；平台适配层已预留，后续可直接补自动化实现。
+4. 可选内核抓包侧车：`--kernel-capture` 将 tcp/udp 元数据流写入 `.omni-proxy/kernel_capture.log`。
 
 ## 3. 核心代理（`omni_proxy`）
 

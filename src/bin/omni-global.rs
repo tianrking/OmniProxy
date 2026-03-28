@@ -10,6 +10,11 @@ use omni_proxy::{
 };
 use std::net::{SocketAddr, UdpSocket};
 use std::path::PathBuf;
+use std::process::Stdio;
+use tokio::fs::OpenOptions;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{Child, Command as TokioCommand};
+use tokio::task::JoinHandle;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -60,6 +65,15 @@ struct Cli {
 
     #[arg(long, default_value_t = true)]
     print_shell_proxy: bool,
+
+    #[arg(long, default_value_t = false)]
+    kernel_capture: bool,
+
+    #[arg(long, default_value = "tcp or udp")]
+    kernel_capture_filter: String,
+
+    #[arg(long, default_value = ".omni-proxy/kernel_capture.log")]
+    kernel_capture_out: PathBuf,
 
     #[arg(long, default_value = "info")]
     log_level: String,
@@ -152,8 +166,23 @@ async fn main() -> Result<()> {
     };
 
     let app = AppConfig::from_cli(core_cli)?;
+    let mut capture_guard = if cli.kernel_capture {
+        match start_kernel_capture(&cli).await {
+            Ok(v) => Some(v),
+            Err(err) => {
+                warn!(error = %err, "kernel capture start failed, continue without it");
+                None
+            }
+        }
+    } else {
+        None
+    };
     info!(listen = %app.listen_addr, api = %app.api_listen_addr, "omni-global launching proxy core");
-    proxy::run(app).await
+    let run_result = proxy::run(app).await;
+    if let Some(mut guard) = capture_guard.take() {
+        guard.stop().await;
+    }
+    run_result
 }
 
 fn resolve_addrs(cli: &Cli) -> Result<(String, String)> {
@@ -260,4 +289,68 @@ fn detect_primary_ip() -> Option<String> {
     let _ = socket.connect("8.8.8.8:80");
     let local = socket.local_addr().ok()?;
     Some(local.ip().to_string())
+}
+
+struct KernelCaptureGuard {
+    child: Child,
+    reader_task: JoinHandle<()>,
+}
+
+impl KernelCaptureGuard {
+    async fn stop(&mut self) {
+        let _ = self.child.start_kill();
+        let _ = self.child.wait().await;
+        self.reader_task.abort();
+    }
+}
+
+async fn start_kernel_capture(cli: &Cli) -> Result<KernelCaptureGuard> {
+    if let Some(parent) = cli.kernel_capture_out.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&cli.kernel_capture_out)
+        .await?;
+
+    let mut cmd = TokioCommand::new("tcpdump");
+    cmd.args(["-l", "-n", "-i", "any", &cli.kernel_capture_filter]);
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    cmd.kill_on_drop(true);
+    let mut child = cmd
+        .spawn()
+        .with_context(|| "failed to spawn tcpdump. try sudo or install tcpdump/libpcap")?;
+
+    let stdout = child
+        .stdout
+        .take()
+        .context("tcpdump stdout not available")?;
+    let mut reader = BufReader::new(stdout).lines();
+    let mut writer = file;
+
+    let task = tokio::spawn(async move {
+        loop {
+            match reader.next_line().await {
+                Ok(Some(line)) => {
+                    let _ = writer.write_all(line.as_bytes()).await;
+                    let _ = writer.write_all(b"\n").await;
+                }
+                Ok(None) => break,
+                Err(_) => break,
+            }
+        }
+        let _ = writer.flush().await;
+    });
+
+    println!(
+        "kernel_capture=enabled\nkernel_capture_filter={}\nkernel_capture_out={}",
+        cli.kernel_capture_filter,
+        cli.kernel_capture_out.display()
+    );
+    Ok(KernelCaptureGuard {
+        child,
+        reader_task: task,
+    })
 }

@@ -45,6 +45,13 @@ cargo run --bin omni-global -- --mode local --set-system-proxy
 Linux GNOME 一键抓包同上（需要 `gsettings`）。
 若自动接管失败，执行输出里的 `set_proxy_hint`。
 
+开启内核级 tcp/udp 元数据流：
+
+```bash
+cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
+tail -f ./.omni-proxy/kernel_capture.log
+```
+
 局域网网关抓包启动：
 
 ```bash

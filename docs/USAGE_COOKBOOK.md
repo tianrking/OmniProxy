@@ -45,6 +45,13 @@ cargo run --bin omni-global -- --mode local --set-system-proxy
 Linux GNOME one-command capture is the same command above (`gsettings` required).
 If auto setup fails, use printed `set_proxy_hint`.
 
+Enable kernel-level tcp/udp metadata stream:
+
+```bash
+cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
+tail -f ./.omni-proxy/kernel_capture.log
+```
+
 LAN gateway helper:
 
 ```bash

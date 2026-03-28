@@ -98,6 +98,8 @@ cargo run --bin omni-global -- --mode local --set-system-proxy
 cargo run --bin omni-global -- --unset-system-proxy
 # LAN gateway mode for other devices
 cargo run --bin omni-global -- --mode lan
+# add kernel-level tcp/udp metadata capture (tcpdump-compatible stream)
+cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 ```
 
 Note:

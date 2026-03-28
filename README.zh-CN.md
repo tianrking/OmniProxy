@@ -101,6 +101,8 @@ cargo run --bin omni-global -- --mode local --set-system-proxy
 cargo run --bin omni-global -- --unset-system-proxy
 # 局域网网关模式（让其他设备走这台机器）
 cargo run --bin omni-global -- --mode lan
+# 叠加内核级 tcp/udp 元数据抓取（tcpdump 风格）
+cargo run --bin omni-global -- --mode local --set-system-proxy --kernel-capture
 ```
 
 说明：

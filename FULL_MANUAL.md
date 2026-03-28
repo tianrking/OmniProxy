@@ -30,6 +30,7 @@ OmniProxy is a modern MITM toolkit with:
 1. macOS: auto system proxy set/unset supported.
 2. Linux (GNOME + `gsettings`): auto system proxy set/unset supported.
 3. Windows: manual command hints emitted; adapter architecture already prepared.
+4. Optional kernel capture sidecar: `--kernel-capture` logs tcp/udp metadata stream to `.omni-proxy/kernel_capture.log`.
 
 ## 3. Proxy Core (`omni_proxy`)
 
