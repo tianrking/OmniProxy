@@ -265,6 +265,7 @@ fn decode_body(
                 None
             }
         },
+        None if size == Some(0) && !truncated => Some(Vec::new()),
         None => None,
     };
     if let Some(size) = size
@@ -278,6 +279,9 @@ fn decode_body(
         && !matches!(reason.as_str(), "empty" | "no-body")
     {
         issues.push(format!("body unavailable: {reason}"));
+    }
+    if body.is_none() && size.is_none() && issues.is_empty() {
+        issues.push("recording has no evidence that the body is complete".into());
     }
     (body, issues)
 }

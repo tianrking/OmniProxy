@@ -3,7 +3,9 @@
 ## Reproduction Workbench delivery
 
 - `DONE`: Windows build/test baseline; explicit recording integrity and safe pairing.
-- `IN_PROGRESS`: portable scenarios, semantic regression checks, fault reproduction and Web UI.
+- `DONE`: portable scenarios, semantic regression checks, per-run HTTP fault gateway,
+  fail-fast dependency handling and JSON/JUnit CLI reports.
+- `IN_PROGRESS`: browser workbench and capture-to-report UI acceptance.
 - Acceptance scope and known limits: [WORKBENCH.md](WORKBENCH.md).
 
 This is the canonical implementation checklist for reaching full core capability parity (and beyond) for modern API/security proxy workflows.

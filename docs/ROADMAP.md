@@ -180,6 +180,6 @@ Execution cadence:
 # Reproduction Workbench increment
 
 Three delivery milestones: capture integrity (complete), scenario/fault runner
-(in progress), browser workbench (in progress). Two increments remain in this slice;
+(complete), browser workbench (in progress). One increment remains in this slice;
 the historical full-parity estimates below are separate.
 

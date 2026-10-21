@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "checkout-ci",
+  "name": "Checkout API regression",
+  "description": "Start omni-workbench, then run this example against its local lab.",
+  "base_url": "http://127.0.0.1:9092",
+  "variables": {"quantity": 2},
+  "timeout_ms": 5000,
+  "steps": [
+    {
+      "id": "login", "name": "Login and create session", "method": "POST", "path": "/lab/api/login",
+      "body": {"username": "demo"}, "extract": {"token": "/token"},
+      "expect": {"status": 200, "assertions": [{"pointer": "/token", "op": "type", "value": "string"}]}
+    },
+    {
+      "id": "create", "name": "Create order", "method": "POST", "path": "/lab/api/orders",
+      "headers": {"authorization": "Bearer {{token}}"}, "body": {"quantity": "{{quantity}}"}, "extract": {"order_id": "/id"},
+      "expect": {"status": 201, "json": {"id": "dynamic", "quantity": 2, "total": 180, "currency": "CNY", "state": "created"}, "ignore_json": ["/id"]}
+    },
+    {
+      "id": "verify", "name": "Verify persisted order", "method": "GET", "path": "/lab/api/orders/{{order_id}}",
+      "headers": {"authorization": "Bearer {{token}}"},
+      "expect": {"status": 200, "json": {"id": "{{order_id}}", "quantity": 2, "total": 180, "currency": "CNY", "state": "created"}, "max_latency_ms": 1000}
+    }
+  ]
+}
