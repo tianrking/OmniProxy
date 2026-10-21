@@ -9,7 +9,13 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::Duration,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -60,6 +66,7 @@ impl FaultSpec {
 }
 #[derive(Clone)]
 struct GatewayState {
+    matches: Arc<AtomicUsize>,
     origin: reqwest::Url,
     client: reqwest::Client,
     fault: FaultSpec,
@@ -96,7 +103,9 @@ pub async fn run_with_fault(
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let cancel = Arc::new(tokio::sync::Notify::new());
+    let matches = Arc::new(AtomicUsize::new(0));
     let state = GatewayState {
+        matches: matches.clone(),
         origin: origin.clone(),
         client,
         fault: fault.clone(),
@@ -112,6 +121,28 @@ pub async fn run_with_fault(
     let mut report = run_scenario(scenario, Some(&format!("http://{address}")), variables).await?;
     report.target = origin.origin().ascii_serialization();
     report.fault = Some(fault);
+    let count = matches.load(Ordering::SeqCst);
+    report.fault_matches = Some(count);
+    if count == 0 {
+        report.status = "failed".into();
+        report.failed += 1;
+        report.steps.push(crate::scenario::StepReport {
+            id: "__fault-coverage".into(),
+            name: "故障路径覆盖检查".into(),
+            method: "CHECK".into(),
+            path: report.fault.as_ref().unwrap().path.clone(),
+            status: "failed".into(),
+            http_status: None,
+            duration_ms: 0,
+            checks: vec![crate::scenario::Check {
+                field: "fault.path".into(),
+                passed: false,
+                message: "No request matched the fault path; the fault was never injected".into(),
+            }],
+            response: None,
+            extracted: Vec::new(),
+        });
+    }
     Ok(report)
 }
 async fn gateway(State(state): State<GatewayState>, request: Request) -> Response<Body> {
@@ -127,6 +158,7 @@ async fn forward(state: &GatewayState, request: Request) -> Result<Response<Body
     let affected = request.uri().path() == state.fault.path;
     let fault = &state.fault;
     if affected {
+        state.matches.fetch_add(1, Ordering::SeqCst);
         match fault.kind {
             FaultKind::Delay => tokio::time::sleep(Duration::from_millis(fault.delay_ms)).await,
             FaultKind::Status => {

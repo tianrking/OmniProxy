@@ -5,7 +5,10 @@
 - `DONE`: Windows build/test baseline; explicit recording integrity and safe pairing.
 - `DONE`: portable scenarios, semantic regression checks, per-run HTTP fault gateway,
   fail-fast dependency handling and JSON/JUnit CLI reports.
-- `IN_PROGRESS`: browser workbench and capture-to-report UI acceptance.
+- `DONE`: embedded local browser workbench, managed recording, inspection, scenario
+  editing, exact token/ID dependency inference, fault runs and report comparison.
+- HTTP/API acceptance is covered by automated socket tests; browser regression
+  checks and screenshots are part of CI. Packet-level and device acceptance remain separate.
 - Acceptance scope and known limits: [WORKBENCH.md](WORKBENCH.md).
 
 This is the canonical implementation checklist for reaching full core capability parity (and beyond) for modern API/security proxy workflows.

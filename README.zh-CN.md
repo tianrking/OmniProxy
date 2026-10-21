@@ -288,6 +288,18 @@ API 合同文档：
 已跑通原有 Windows 构建及 17 个测试，新增录制完整性诊断和安全配对：
 丢事件、截断、无效内容、并发响应无法确认归属时会明确提示，阻止生成不可靠的回归基线。
 已增加多步骤场景、cookie 会话、JSON Pointer 变量提取、语义断言、HTTP 故障注入，
-以及适用于 CI 的 JSON/JUnit 报告与失败退出码。正在验证浏览器工作台。
+以及适用于 CI 的 JSON/JUnit 报告与失败退出码。
+本地浏览器工作台已连接真实代理录制、请求响应检查、场景编辑、故障实验与历史报告比较。
+录制生成场景时会关联能精确匹配的 token/ID，并由新的 cookie 会话接续登录流程；请检查推断结果。
 验证范围与运行命令见 [工作台说明](docs/WORKBENCH.md)。
+
+```sh
+cargo build --locked --bins
+cargo run --locked --bin omni-workbench
+```
+
+打开 `http://127.0.0.1:9092`，先运行订单示例；也可在“流量录制”启动代理并录制示例流量。
+默认代理地址为 `http://127.0.0.1:9090`。HTTPS 客户端需信任工作台提供的 CA 证书。
+界面内置于 Rust 二进制，日常运行无需 Node.js。GitHub/Codex Cloud 维护流程见
+[开发与 CI 指南](docs/CODEX_CLOUD.md)。
 

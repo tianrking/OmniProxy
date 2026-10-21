@@ -1,0 +1,51 @@
+const {test,expect} = require('@playwright/test');
+test('normal workflow, semantic fault and history comparison are usable from the browser',async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/');await expect(page.getByRole('heading',{name:'让每个网络问题，都能被复现。'})).toBeVisible();
+  await page.getByRole('button',{name:'▷ 运行示例场景',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'所有断言通过',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'打开场景 ↗',exact:true}).click();
+  await page.getByRole('combobox',{name:'故障类型',exact:true}).selectOption('json');
+  await page.getByRole('button',{name:'▷ 运行场景',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'检测到回归失败',exact:true})).toBeVisible();
+  await expect(page.getByText('changed: /total',{exact:true})).toBeVisible();
+  await page.getByRole('combobox',{name:'选择同场景的对照运行',exact:true}).selectOption({index:1});
+  await expect(page.locator('#comparison table')).toBeVisible();
+  await page.screenshot({path:'test-results/semantic-fault.png',fullPage:true});
+  expect(errors).toEqual([]);
+});
+test('recording through the real core becomes a runnable scenario with inferred dependencies',async({page})=>{
+  await page.goto('/#captures');
+  // Keep the test isolated from user services listening on the default proxy port.
+  await page.getByRole('spinbutton',{name:'代理端口',exact:true}).fill('19090');
+  await page.getByRole('button',{name:'● 开始录制',exact:true}).click();
+  await expect(page.getByRole('button',{name:'录制示例流量',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'录制示例流量',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'请求列表 3',exact:true})).toBeVisible();
+  await expect(page.getByText('录制结构完整',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'■ 停止录制',exact:true}).click();
+  await expect(page.getByRole('button',{name:'● 开始录制',exact:true})).toBeVisible();
+  await page.getByRole('checkbox',{name:'选择所有显示的请求',exact:true}).check();
+  await page.getByRole('textbox',{name:'生成场景名称',exact:true}).fill('Browser capture regression');
+  await page.screenshot({path:'test-results/capture.png',fullPage:true});
+  await page.getByRole('button',{name:'选中 → 场景',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'场景名称',exact:true})).toHaveValue('Browser capture regression');
+  await page.getByRole('button',{name:'▷ 运行场景',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'所有断言通过',exact:true})).toBeVisible();
+});
+test('editing validates input, theme and narrow layout remain functional',async({page})=>{
+  await page.goto('/#scenarios');
+  await page.getByRole('button',{name:/◇ 订单全链路/}).click();
+  await page.getByRole('textbox',{name:'默认变量（JSON；敏感值建议留空，在运行时提供）',exact:true}).fill('{broken');
+  await page.getByRole('button',{name:'保存场景',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('不是有效 JSON');
+  await page.getByRole('textbox',{name:'默认变量（JSON；敏感值建议留空，在运行时提供）',exact:true}).fill('{"quantity":2}');
+  await page.getByRole('button',{name:'保存场景',exact:true}).click();
+  await page.getByRole('button',{name:'切换深浅主题',exact:true}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.getByRole('button',{name:/概览/}).click();
+  await expect(page.getByRole('heading',{name:'让每个网络问题，都能被复现。'})).toBeVisible();
+  await page.screenshot({path:'test-results/mobile.png',fullPage:true});
+});

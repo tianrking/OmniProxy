@@ -13,5 +13,4 @@ pub mod rules;
 pub mod scenario;
 pub mod storage;
 pub mod vpn;
-
-
+pub mod workbench;

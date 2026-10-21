@@ -119,6 +119,9 @@ pub struct StepReport {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunReport {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fault_matches: Option<usize>,
+    #[serde(default)]
     pub scenario_sha256: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fault: Option<crate::faults::FaultSpec>,
@@ -248,6 +251,7 @@ pub async fn run_scenario(
         .build()?;
     let started = Instant::now();
     let mut report = RunReport {
+        fault_matches: None,
         scenario_sha256: {
             use sha2::{Digest, Sha256};
             Sha256::digest(serde_json::to_vec(scenario)?)
@@ -479,6 +483,8 @@ async fn execute_step(
     let passed = checks.iter().all(|c| c.passed);
     if passed {
         variables.extend(pending);
+    } else {
+        extracted.clear();
     }
     Ok(StepReport {
         id: step.id.clone(),
@@ -683,6 +689,9 @@ pub fn is_transport_header(name: &str) -> bool {
 }
 
 pub fn from_capture(capture: &Capture, indexes: &[usize], name: String) -> Result<Scenario> {
+    if indexes.is_empty() || indexes.len() > 100 {
+        bail!("select 1..100 requests for a focused regression scenario");
+    }
     if !capture.issues.is_empty() {
         bail!(
             "recording has integrity warnings; make a complete recording before exporting a regression scenario"
@@ -805,9 +814,214 @@ pub fn from_capture(capture: &Capture, indexes: &[usize], name: String) -> Resul
             expect,
         });
     }
-    let scenario = Scenario {schema_version:1,id:uuid::Uuid::new_v4().to_string(),name,description:"Created from a complete capture. Review dynamic fields and configure extraction before sharing.".into(),base_url:origin.ascii_serialization(),variables,timeout_ms:5000,steps};
+    infer_dependencies(&selected, &mut steps, &mut variables);
+    let scenario = Scenario {schema_version:1,id:uuid::Uuid::new_v4().to_string(),name,description:"Created from a complete capture. Exact token/ID matches are linked automatically; review inferred dependencies, dynamic fields and sensitive inputs before running or sharing.".into(),base_url:origin.ascii_serialization(),variables,timeout_ms:5000,steps};
     scenario.validate()?;
     Ok(scenario)
+}
+
+// Deliberately conservative: only exact, nontrivial string values and path segments.
+// This is deterministic data-flow inference, not a claim to understand an API.
+fn infer_dependencies(
+    requests: &[&crate::replay::ReplayCandidate],
+    steps: &mut [Step],
+    variables: &mut BTreeMap<String, Value>,
+) {
+    fn strings(value: &Value, path: &str, out: &mut Vec<(String, String)>) {
+        if out.len() >= 64 {
+            return;
+        }
+        match value {
+            Value::String(text) if text.len() >= 8 && text.len() <= 2048 => {
+                out.push((path.into(), text.clone()))
+            }
+            Value::Object(items) => {
+                for (key, value) in items {
+                    strings(value, &format!("{path}/{}", pointer_key(key)), out);
+                }
+            }
+            Value::Array(items) => {
+                for (index, value) in items.iter().enumerate() {
+                    strings(value, &format!("{path}/{index}"), out);
+                }
+            }
+            _ => {}
+        }
+    }
+    fn replace_json(value: &mut Value, needle: &str, replacement: &str) -> bool {
+        match value {
+            Value::String(text) if text == needle => {
+                *text = replacement.into();
+                true
+            }
+            Value::Object(items) => items.values_mut().fold(false, |changed, v| {
+                replace_json(v, needle, replacement) || changed
+            }),
+            Value::Array(items) => items.iter_mut().fold(false, |changed, v| {
+                replace_json(v, needle, replacement) || changed
+            }),
+            _ => false,
+        }
+    }
+    let mut cookies = BTreeSet::new();
+    for (index, request) in requests.iter().enumerate() {
+        if let Some((name, value)) = request
+            .headers
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case("cookie"))
+        {
+            let inherited = value.split(';').all(|pair| {
+                pair.trim()
+                    .split_once('=')
+                    .is_some_and(|(name, _)| cookies.contains(name))
+            });
+            if inherited {
+                steps[index].headers.remove(name);
+            }
+        }
+        if let Some(response) = &request.captured_response {
+            for (_, value) in response
+                .headers
+                .iter()
+                .filter(|(name, _)| name.eq_ignore_ascii_case("set-cookie"))
+            {
+                if let Some((name, _)) = value.split(';').next().unwrap_or("").split_once('=') {
+                    cookies.insert(name.to_string());
+                }
+            }
+        }
+    }
+    let mut seen = BTreeSet::new();
+    for source in 0..steps.len() {
+        let Some(response) = requests[source]
+            .captured_response
+            .as_ref()
+            .and_then(|r| r.body.as_ref())
+            .and_then(|body| serde_json::from_slice::<Value>(body).ok())
+        else {
+            continue;
+        };
+        let mut candidates = Vec::new();
+        strings(&response, "", &mut candidates);
+        for (number, (pointer, value)) in candidates.into_iter().enumerate() {
+            if pointer.is_empty() || seen.contains(&value) {
+                continue;
+            }
+            let name = format!("capture_{}_{}", source + 1, number + 1);
+            let replacement = format!("{{{{{name}}}}}");
+            let mut linked = false;
+            for next in source + 1..steps.len() {
+                for (key, raw) in &requests[next].headers {
+                    if key.eq_ignore_ascii_case("cookie") {
+                        continue;
+                    }
+                    if *raw == value {
+                        steps[next].headers.insert(key.clone(), replacement.clone());
+                        linked = true;
+                    } else if raw.strip_prefix("Bearer ") == Some(value.as_str()) {
+                        steps[next]
+                            .headers
+                            .insert(key.clone(), format!("Bearer {replacement}"));
+                        linked = true;
+                    }
+                }
+                let (path, query) = steps[next]
+                    .path
+                    .split_once('?')
+                    .map(|(p, q)| (p.to_string(), Some(q.to_string())))
+                    .unwrap_or_else(|| (steps[next].path.clone(), None));
+                let parts: Vec<_> = path
+                    .split('/')
+                    .map(|part| {
+                        if part == value {
+                            linked = true;
+                            replacement.clone()
+                        } else {
+                            part.to_string()
+                        }
+                    })
+                    .collect();
+                let path = parts.join("/");
+                let query = query.map(|query| {
+                    let input = Url::parse(&format!("http://local/?{query}")).unwrap();
+                    input
+                        .query_pairs()
+                        .map(|(key, current)| {
+                            let raw_url = Url::parse(&requests[next].uri).unwrap();
+                            let raw_matches =
+                                raw_url.query_pairs().any(|(k, v)| k == key && v == value);
+                            let encoded = Url::parse_with_params(
+                                "http://local/",
+                                &[(key.as_ref(), current.as_ref())],
+                            )
+                            .unwrap();
+                            if raw_matches {
+                                linked = true;
+                                let prefix =
+                                    Url::parse_with_params("http://local/", &[(key.as_ref(), "")])
+                                        .unwrap();
+                                format!("{}{}", prefix.query().unwrap(), replacement)
+                            } else {
+                                encoded
+                                    .query()
+                                    .unwrap()
+                                    .replace("%7B%7B", "{{")
+                                    .replace("%7D%7D", "}}")
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("&")
+                });
+                steps[next].path = format!(
+                    "{path}{}",
+                    query.map(|q| format!("?{q}")).unwrap_or_default()
+                );
+                if let Some(body) = &mut steps[next].body {
+                    linked = replace_json(body, &value, &replacement) || linked;
+                    if let Some(raw) = requests[next]
+                        .body
+                        .as_ref()
+                        .and_then(|b| serde_json::from_slice::<Value>(b).ok())
+                    {
+                        let mut leaves = Vec::new();
+                        strings(&raw, "", &mut leaves);
+                        for (path, text) in leaves {
+                            if text == value
+                                && let Some(target) = body.pointer_mut(&path)
+                            {
+                                *target = json!(replacement);
+                                linked = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if linked {
+                for step in steps.iter_mut().skip(source + 1) {
+                    if let Some(baseline) = &mut step.expect.json {
+                        replace_json(baseline, &value, &replacement);
+                    }
+                }
+                steps[source].extract.insert(name, pointer.clone());
+                if let Some(baseline) = &mut steps[source].expect.json {
+                    mask_pointer(baseline, &pointer);
+                }
+                if !steps[source].expect.ignore_json.contains(&pointer) {
+                    steps[source].expect.ignore_json.push(pointer);
+                }
+                seen.insert(value);
+            }
+        }
+    }
+    for step in steps.iter_mut() {
+        step.name = format!(
+            "{} {}",
+            step.method,
+            step.path.split('?').next().unwrap_or("/")
+        );
+    }
+    let serialized = serde_json::to_string(steps).unwrap_or_default();
+    variables.retain(|key, _| serialized.contains(&format!("{{{{{key}}}}}")));
 }
 fn parameterize(value: &mut Value, variables: &mut BTreeMap<String, Value>, prefix: &str) {
     match value {

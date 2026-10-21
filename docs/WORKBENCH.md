@@ -17,6 +17,43 @@ not a claim of complete HTTP/2 correlation.
 
 This document records the verified scope of the new workbench as it is delivered.
 
+## Browser workbench
+
+Run `cargo build --locked --bins`, then `cargo run --locked --bin omni-workbench`.
+Open `http://127.0.0.1:9092`. The Chinese interface includes overview metrics,
+managed proxy recording, flow search/selection and header/body inspection, JSONL
+import, scenario library, visual step editing/full JSON, runtime variables,
+fault controls, historical run comparison and JSON/JUnit downloads. It supports
+light/dark themes, keyboard focus, Ctrl/Cmd+S and narrow layouts. No frontend build
+is needed: HTML/CSS/JS assets are embedded in the executable.
+
+The default workspace is `.omni-workbench` (ignored by Git). Scenario JSON and
+reports persist across restarts. A built-in lab scenario is refreshed with the
+current local port at startup. The UI only binds loopback, checks Host/Origin,
+rejects cross-site browser requests and serves a restrictive CSP without external
+assets. Document IDs cannot address arbitrary filesystem paths. It has no remote
+authentication or multi-user deployment support.
+
+The recorder starts only a sibling `omni_proxy` executable, checks readiness and
+manages only its own process. It does not edit OS proxy settings or trust stores.
+Stop test traffic before stopping a recording: in-flight requests may otherwise
+remain incomplete. Rotated segments can contain orphaned responses at boundaries;
+import only a complete, focused recording. The UI CA endpoint serves the public
+certificate, never its private key. Raw local recordings contain sensitive data;
+masking is best-effort in previews and generated JSON, not encryption of the log.
+
+`录制示例流量` sends three real HTTP requests through the managed proxy. Selecting
+them and generating a scenario links exact prior JSON string values used in later
+paths, query values, headers (including Bearer tokens) and JSON bodies. Cookie
+headers inherited from earlier Set-Cookie responses are removed so a fresh cookie
+jar can establish its own session. Inference considers bounded, nontrivial string
+values; encoded, numeric, transformed, ambiguous or application-specific flows
+still need review and manual extraction. Unlinked secrets become required null
+input variables. Non-JSON bodies are preserved as base64 and need manual review.
+
+A fault path that no request reaches produces an explicit failed coverage check,
+so an unused fault configuration cannot masquerade as a successful experiment.
+
 ## Scenario runner
 
 `omni-scenario` runs ordered, portable JSON scenarios. Each run has a fresh cookie

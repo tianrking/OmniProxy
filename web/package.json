@@ -1,0 +1,6 @@
+{
+  "name": "omniproxy-workbench-ui-tests",
+  "private": true,
+  "scripts": {"test": "playwright test", "check": "node --check app.js"},
+  "devDependencies": {"@playwright/test": "1.64.1"}
+}

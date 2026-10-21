@@ -46,5 +46,7 @@ extended-description = "OmniProxy is a modern MITM proxy core with filter-chain,
 assets = [
   ["target/release/omni_proxy", "usr/bin/omni-proxy", "755"],
   ["target/release/omni-tui", "usr/bin/omni-tui", "755"],
+  ["target/release/omni-scenario", "usr/bin/omni-scenario", "755"],
+  ["target/release/omni-workbench", "usr/bin/omni-workbench", "755"],
   ["README.md", "usr/share/doc/omni-proxy/README.md", "644"],
 ]
