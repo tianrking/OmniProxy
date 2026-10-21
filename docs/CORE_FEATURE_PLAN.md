@@ -1,5 +1,11 @@
 # OmniProxy Core Feature Master Plan
 
+## Reproduction Workbench delivery
+
+- `DONE`: Windows build/test baseline; explicit recording integrity and safe pairing.
+- `IN_PROGRESS`: portable scenarios, semantic regression checks, fault reproduction and Web UI.
+- Acceptance scope and known limits: [WORKBENCH.md](WORKBENCH.md).
+
 This is the canonical implementation checklist for reaching full core capability parity (and beyond) for modern API/security proxy workflows.
 
 Status legend:

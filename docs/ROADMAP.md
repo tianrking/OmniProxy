@@ -177,3 +177,9 @@ Execution cadence:
 - One feature set per version, always commit + push.
 - Keep each iteration buildable and CI-green before moving forward.
 - Prioritize core correctness and extensibility over UI polish.
+# Reproduction Workbench increment
+
+Three delivery milestones: capture integrity (complete), scenario/fault runner
+(in progress), browser workbench (in progress). Two increments remain in this slice;
+the historical full-parity estimates below are separate.
+

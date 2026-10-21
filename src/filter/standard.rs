@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use base64::Engine as _;
 use http_body_util::{BodyExt, Full};
 use hudsucker::hyper::StatusCode;
+use hudsucker::hyper::body::Body as _;
 use hudsucker::hyper::header::{HeaderName, HeaderValue};
 use hudsucker::{Body, HttpContext, RequestOrResponse, hyper::Request, hyper::Response};
 use hudsucker::{WebSocketContext, tokio_tungstenite::tungstenite::Message};
@@ -81,6 +82,10 @@ impl AccessLogFilter {
     fn pop_req_id(&self, client: &str) -> Option<String> {
         let mut guard = self.inflight_req_ids.lock().ok()?;
         let q = guard.get_mut(client)?;
+        // Without an echoed ID, concurrent streams cannot be correlated safely.
+        if q.len() != 1 {
+            return None;
+        }
         let val = q.pop_front();
         if q.is_empty() {
             guard.remove(client);
@@ -168,6 +173,12 @@ impl HttpFilter for AccessLogFilter {
             .get("x-omni-request-id")
             .and_then(|v| v.to_str().ok())
             .map(ToOwned::to_owned);
+        if let Some(id) = &from_header
+            && let Ok(mut pending) = self.inflight_req_ids.lock()
+            && let Some(queue) = pending.get_mut(&client)
+        {
+            queue.retain(|value| value != id);
+        }
         let request_id = from_header.or_else(|| self.pop_req_id(&client));
         if let Some(req_id) = request_id.as_deref() {
             res.headers_mut().insert(
@@ -519,6 +530,30 @@ struct CapturedBody {
     body_capture_reason: Option<String>,
 }
 
+#[cfg(test)]
+mod capture_tests {
+    use super::*;
+    #[tokio::test]
+    async fn empty_get_is_complete_without_content_length() {
+        let request = Request::builder()
+            .uri("http://localhost/")
+            .body(Body::from(Full::new(hudsucker::hyper::body::Bytes::new())))
+            .unwrap();
+        let (_, capture) = capture_request_body(request, 65536, false, true)
+            .await
+            .unwrap();
+        assert!(!capture.body_truncated);
+        assert_eq!(capture.body_size, Some(0));
+    }
+    #[test]
+    fn concurrent_unidentified_responses_do_not_get_fifo_ids() {
+        let filter = AccessLogFilter::default();
+        filter.push_req_id("c", "a");
+        filter.push_req_id("c", "b");
+        assert!(filter.pop_req_id("c").is_none());
+    }
+}
+
 async fn capture_request_body(
     req: Request<Body>,
     max_bytes: usize,
@@ -526,6 +561,15 @@ async fn capture_request_body(
     should_capture: bool,
 ) -> Result<(Request<Body>, CapturedBody)> {
     let (parts, body) = req.into_parts();
+    if body.is_end_stream() {
+        return Ok((
+            Request::from_parts(parts, body),
+            CapturedBody {
+                body_size: Some(0),
+                ..Default::default()
+            },
+        ));
+    }
     if !should_capture {
         let body_size = content_length(parts.headers.get("content-length"));
         return Ok((
@@ -598,6 +642,15 @@ async fn capture_response_body(
     should_capture: bool,
 ) -> Result<(Response<Body>, CapturedBody)> {
     let (parts, body) = res.into_parts();
+    if body.is_end_stream() {
+        return Ok((
+            Response::from_parts(parts, body),
+            CapturedBody {
+                body_size: Some(0),
+                ..Default::default()
+            },
+        ));
+    }
     if !should_capture {
         let body_size = content_length(parts.headers.get("content-length"));
         return Ok((
