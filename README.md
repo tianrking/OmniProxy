@@ -2,6 +2,22 @@
 
 OmniProxy is a modern MITM proxy core for API debugging and security analysis.
 
+## Capture → reproduce → verify
+
+The embedded **Reproduction Workbench** adds a local browser UI for recording,
+flow inspection, scenario editing, HTTP fault experiments and regression reports.
+No frontend build or Node.js is required to run it.
+
+```sh
+cargo build --locked --bins
+cargo run --locked --bin omni-workbench
+# Open http://127.0.0.1:9092 and run the built-in checkout workflow.
+```
+
+`omni-scenario` runs the same portable scenarios in CI, with semantic assertions,
+dynamic variables, cookies, nonzero failure exit codes and JSON/JUnit reports.
+See [Workbench guide](docs/WORKBENCH.md) and [Codex Cloud / GitHub workflow](docs/CODEX_CLOUD.md).
+
 中文文档: [README.zh-CN.md](./README.zh-CN.md)
 Full Manual (EN): [FULL_MANUAL.md](./FULL_MANUAL.md)
 完整手册（中文）: [FULL_MANUAL.zh-CN.md](./FULL_MANUAL.zh-CN.md)

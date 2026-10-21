@@ -7,6 +7,7 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0"
+axum = "0.8"
 async-trait = "0.1"
 base64 = "0.22"
 clap = { version = "4.5", features = ["derive", "env"] }
@@ -16,7 +17,7 @@ hudsucker = { version = "0.24.1", default-features = false, features = ["http2",
 http-body-util = "0.1"
 regex = "1.12"
 ratatui = "0.30"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "cookies"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10"
@@ -45,5 +46,7 @@ extended-description = "OmniProxy is a modern MITM proxy core with filter-chain,
 assets = [
   ["target/release/omni_proxy", "usr/bin/omni-proxy", "755"],
   ["target/release/omni-tui", "usr/bin/omni-tui", "755"],
+  ["target/release/omni-scenario", "usr/bin/omni-scenario", "755"],
+  ["target/release/omni-workbench", "usr/bin/omni-workbench", "755"],
   ["README.md", "usr/share/doc/omni-proxy/README.md", "644"],
 ]

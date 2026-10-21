@@ -9,6 +9,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_BUILD_JOBS: 2
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+
 jobs:
   verify:
     name: verify (ubuntu-amd64)
@@ -20,14 +29,45 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node for browser tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
       - name: Cargo fmt
         run: cargo fmt --all --check
 
       - name: Cargo check
-        run: cargo check --all-targets
+        run: cargo check --locked --all-targets
 
       - name: Cargo test
-        run: cargo test --all-targets --all-features
+        run: cargo test --locked --all-targets --all-features
+
+      - name: Validate scenario CLI
+        run: cargo run --locked --bin omni-scenario -- validate examples/scenarios/checkout.json
+
+      - name: Browser regression tests
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run check
+          npx playwright install --with-deps chromium
+          npm test
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workbench-browser-evidence
+          path: |
+            web/test-results/
+            web/playwright-report/
+          if-no-files-found: ignore
 
       - name: Rule preflight check
         run: cargo run --bin omni_proxy -- --check-rules --rule-file ./examples/rules-ci.txt
@@ -73,6 +113,8 @@ jobs:
           path: |
             target/${{ matrix.target }}/release/omni_proxy
             target/${{ matrix.target }}/release/omni-tui
+            target/${{ matrix.target }}/release/omni-scenario
+            target/${{ matrix.target }}/release/omni-workbench
             target/${{ matrix.target }}/release/omni-replay
           if-no-files-found: error
 
@@ -98,6 +140,8 @@ jobs:
           path: |
             target/x86_64-pc-windows-msvc/release/omni_proxy.exe
             target/x86_64-pc-windows-msvc/release/omni-tui.exe
+            target/x86_64-pc-windows-msvc/release/omni-scenario.exe
+            target/x86_64-pc-windows-msvc/release/omni-workbench.exe
             target/x86_64-pc-windows-msvc/release/omni-replay.exe
           if-no-files-found: error
 
@@ -129,6 +173,8 @@ jobs:
           path: |
             target/${{ matrix.target }}/release/omni_proxy
             target/${{ matrix.target }}/release/omni-tui
+            target/${{ matrix.target }}/release/omni-scenario
+            target/${{ matrix.target }}/release/omni-workbench
             target/${{ matrix.target }}/release/omni-replay
           if-no-files-found: error
 
@@ -156,6 +202,9 @@ jobs:
 
       - name: Build deb package
         run: cargo deb --no-build
+
+      - name: Exercise extracted Debian package
+        run: python3 scripts/smoke_deb.py target/debian/*.deb
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4

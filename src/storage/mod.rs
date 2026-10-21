@@ -40,6 +40,8 @@ pub async fn run_flow_logger(
                 let line = serde_json::to_string(&event)?;
                 file.write_all(line.as_bytes()).await?;
                 file.write_all(b"\n").await?;
+                // Complete pending async writes before a managed recorder is stopped.
+                file.flush().await?;
                 current_size = current_size.saturating_add(line.len() as u64 + 1);
 
                 if opts.rotate_bytes > 0 && current_size >= opts.rotate_bytes {
@@ -51,6 +53,11 @@ pub async fn run_flow_logger(
             }
             Err(broadcast::error::RecvError::Lagged(skipped)) => {
                 error!(skipped, "flow logger lagged");
+                let marker = serde_json::json!({"type":"CaptureGap","timestamp_ms":crate::api::now_ms(),"skipped":skipped}).to_string();
+                file.write_all(marker.as_bytes()).await?;
+                file.write_all(b"\n").await?;
+                file.flush().await?;
+                current_size = current_size.saturating_add(marker.len() as u64 + 1);
             }
             Err(broadcast::error::RecvError::Closed) => break,
         }

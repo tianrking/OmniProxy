@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build-release:
@@ -30,6 +31,8 @@ jobs:
           cp target/release/omni-tui dist/omni-tui-linux-amd64
           cp target/release/omni-replay dist/omni-replay-linux-amd64
           cp target/release/omni-bench dist/omni-bench-linux-amd64
+          cp target/release/omni-scenario dist/omni-scenario-linux-amd64
+          cp target/release/omni-workbench dist/omni-workbench-linux-amd64
 
       - name: Generate checksums
         run: |

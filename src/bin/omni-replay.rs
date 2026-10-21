@@ -154,6 +154,12 @@ async fn main() -> Result<()> {
 }
 
 async fn replay_one(cli: &Cli, candidate: &ReplayCandidate) -> Result<()> {
+    if !candidate.replayable() {
+        bail!(
+            "request cannot be replayed faithfully: {}",
+            candidate.issues.join("; ")
+        );
+    }
     let mut method = cli
         .method_override
         .as_deref()
