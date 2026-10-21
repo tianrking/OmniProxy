@@ -29,7 +29,9 @@ is needed: HTML/CSS/JS assets are embedded in the executable.
 
 The default workspace is `.omni-workbench` (ignored by Git). Scenario JSON and
 reports persist across restarts. A built-in lab scenario is refreshed with the
-current local port at startup. The UI only binds loopback, checks Host/Origin,
+current local port at startup; duplicate it to retain custom edits. The visual
+editor preserves custom HTTP methods, and a new recording resets prior selections.
+The UI only binds loopback, checks Host/Origin,
 rejects cross-site browser requests and serves a restrictive CSP without external
 assets. Document IDs cannot address arbitrary filesystem paths. It has no remote
 authentication or multi-user deployment support.

@@ -179,6 +179,9 @@ Execution cadence:
 - Prioritize core correctness and extensibility over UI polish.
 # Reproduction Workbench increment
 
+UI follow-up: new recordings clear stale selections; custom HTTP methods survive
+visual editing. Browser acceptance includes both cases.
+
 Three delivery milestones: capture integrity (complete), scenario/fault runner
 (complete), browser workbench (complete). No implementation increment remains in this slice;
 the historical full-parity estimates below are separate.

@@ -32,6 +32,23 @@ test('recording through the real core becomes a runnable scenario with inferred 
   await expect(page.getByRole('textbox',{name:'场景名称',exact:true})).toHaveValue('Browser capture regression');
   await page.getByRole('button',{name:'▷ 运行场景',exact:true}).click();
   await expect(page.getByRole('heading',{name:'所有断言通过',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'⇄ 流量录制 02',exact:true}).click();
+  await page.getByRole('spinbutton',{name:'代理端口',exact:true}).fill('19090');
+  await page.getByRole('button',{name:'● 开始录制',exact:true}).click();
+  await page.getByRole('button',{name:'录制示例流量',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'请求列表 3',exact:true})).toBeVisible();
+  await expect(page.getByRole('checkbox',{name:'选择所有显示的请求',exact:true})).not.toBeChecked();
+  await page.getByRole('button',{name:'■ 停止录制',exact:true}).click();
+  await expect(page.getByRole('button',{name:'● 开始录制',exact:true})).toBeVisible();
+});
+test('an imported custom HTTP method survives visual editing and execution',async({page,request})=>{
+  const scenario={schema_version:1,id:'custom-http-method',name:'Custom HTTP method',base_url:'http://127.0.0.1:19092',timeout_ms:5000,steps:[{id:'custom',name:'PROPFIND is preserved',method:'PROPFIND',path:'/lab/api/orders',expect:{status:405}}]};
+  expect((await request.post('/api/scenarios',{data:scenario})).ok()).toBe(true);
+  await page.goto('/#scenarios');
+  await page.getByRole('button',{name:/◇ Custom HTTP method/}).click();
+  await expect(page.getByRole('combobox',{name:'方法',exact:true})).toHaveValue('PROPFIND');
+  await page.getByRole('button',{name:'▷ 运行场景',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'所有断言通过',exact:true})).toBeVisible();
 });
 test('editing validates input, theme and narrow layout remain functional',async({page})=>{
   await page.goto('/#scenarios');
