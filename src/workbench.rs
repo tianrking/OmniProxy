@@ -455,14 +455,7 @@ async fn start_recording(
         .context("proxy port is already in use")?;
     let api = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let api_address = api.local_addr()?;
-    let executable = std::env::current_exe()?.with_file_name(if cfg!(windows) {
-        "omni_proxy.exe"
-    } else {
-        "omni_proxy"
-    });
-    if !executable.is_file() {
-        bail!("build the core first: cargo build --bins --locked");
-    }
+    let executable = core_executable(&std::env::current_exe()?)?;
     let id = uuid::Uuid::new_v4().to_string();
     let proxy_dir = state.root.join("proxy");
     let log = std::fs::File::create(proxy_dir.join("process.log"))?;
@@ -522,6 +515,46 @@ async fn start_recording(
     }
     child.kill().await?;
     bail!("proxy did not become ready within 10 seconds")
+}
+
+fn core_executable(current: &FsPath) -> Result<PathBuf> {
+    let names = if cfg!(windows) {
+        ["omni_proxy.exe", "omni-proxy.exe"]
+    } else {
+        ["omni_proxy", "omni-proxy"]
+    };
+    names.into_iter().map(|name|current.with_file_name(name)).find(|path|path.is_file()).context("proxy core missing next to workbench; install the full package or run cargo build --locked --bins")
+}
+
+#[cfg(test)]
+mod packaging_tests {
+    use super::*;
+    #[test]
+    fn recorder_finds_both_cargo_and_debian_core_names() {
+        let root = std::env::temp_dir().join(format!("omni-core-path-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let current = root.join(if cfg!(windows) {
+            "omni-workbench.exe"
+        } else {
+            "omni-workbench"
+        });
+        assert!(core_executable(&current).is_err());
+        let debian = root.join(if cfg!(windows) {
+            "omni-proxy.exe"
+        } else {
+            "omni-proxy"
+        });
+        std::fs::write(&debian, b"fixture").unwrap();
+        assert_eq!(core_executable(&current).unwrap(), debian);
+        let cargo = root.join(if cfg!(windows) {
+            "omni_proxy.exe"
+        } else {
+            "omni_proxy"
+        });
+        std::fs::write(&cargo, b"fixture").unwrap();
+        assert_eq!(core_executable(&current).unwrap(), cargo);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }
 async fn stop_recording(State(state): State<Workbench>) -> ApiResult<Json<Value>> {
     let mut recording = state.capture.lock().await;

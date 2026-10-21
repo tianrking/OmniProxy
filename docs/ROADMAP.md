@@ -181,6 +181,8 @@ Execution cadence:
 
 UI follow-up: new recordings clear stale selections; custom HTTP methods survive
 visual editing. Browser acceptance includes both cases.
+Package follow-up: both core executable names resolve; CI exercises the extracted
+Debian package through actual recording, inferred replay and CLI reports.
 
 Three delivery milestones: capture integrity (complete), scenario/fault runner
 (complete), browser workbench (complete). No implementation increment remains in this slice;

@@ -8,6 +8,7 @@
 - `DONE`: embedded local browser workbench, managed recording, inspection, scenario
   editing, exact token/ID dependency inference, fault runs and report comparison.
 - `DONE`: UI regression checks for recording isolation and preserving custom HTTP methods.
+- `DONE`: Cargo/Debian core executable lookup; extracted-package recording/replay smoke test in CI.
 - HTTP/API acceptance is covered by automated socket tests; browser regression
   checks and screenshots are part of CI. Packet-level and device acceptance remain separate.
 - Acceptance scope and known limits: [WORKBENCH.md](WORKBENCH.md).

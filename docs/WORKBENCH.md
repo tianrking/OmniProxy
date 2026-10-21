@@ -37,6 +37,7 @@ assets. Document IDs cannot address arbitrary filesystem paths. It has no remote
 authentication or multi-user deployment support.
 
 The recorder starts only a sibling `omni_proxy` executable, checks readiness and
+also recognizes the Debian package's `omni-proxy` executable name. It
 manages only its own process. It does not edit OS proxy settings or trust stores.
 Stop test traffic before stopping a recording: in-flight requests may otherwise
 remain incomplete. Rotated segments can contain orphaned responses at boundaries;

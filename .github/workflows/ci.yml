@@ -203,6 +203,9 @@ jobs:
       - name: Build deb package
         run: cargo deb --no-build
 
+      - name: Exercise extracted Debian package
+        run: python3 scripts/smoke_deb.py target/debian/*.deb
+
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
